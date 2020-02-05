@@ -7,6 +7,7 @@ import android.widget.Toast
 import androidx.compose.Composable
 import androidx.compose.Model
 import androidx.fragment.app.Fragment
+import androidx.fragment.app.viewModels
 import androidx.lifecycle.*
 import androidx.ui.core.*
 import androidx.ui.foundation.shape.corner.RoundedCornerShape
@@ -23,7 +24,6 @@ import androidx.ui.unit.dp
 import dagger.Module
 import dagger.Provides
 import dagger.Subcomponent
-import ph.codeia.shiv.Shared
 import javax.inject.Inject
 
 /*
@@ -33,14 +33,16 @@ import javax.inject.Inject
 
 class LoginFragment @Inject constructor(
 	private val loginComponent: LoginComponent.Factory,
-	@Shared private val viewModel: LoginViewModel
+	zombies: SavedStateViewModelFactory
 ) : Fragment(R.layout.empty) {
+	private val viewModel: LoginViewModel by viewModels { zombies }
+
 	override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
 		val login = loginComponent.bind(viewModel)
 		val lifetime = viewLifecycleOwner
 		(view as ViewGroup).setContent {
 			MaterialTheme {
-				login.screen.view().observe(lifetime, login.controller)
+				login.output.view().observe(lifetime, login.input)
 			}
 		}
 		viewModel.toasts.consume(lifetime) {
@@ -49,13 +51,6 @@ class LoginFragment @Inject constructor(
 	}
 }
 
-sealed class Action {
-	class SetUsername(val value: EditorModel) : Action()
-	class SetPassword(val value: String) : Action()
-	object Submit : Action()
-	object Plus : Action()
-	object Minus : Action()
-}
 
 @[Preview Composable]
 fun DefaultPreview() {
@@ -68,20 +63,28 @@ fun DefaultPreview() {
 }
 
 
+sealed class Action {
+	class SetUsername(val value: String) : Action()
+	class SetPassword(val value: String) : Action()
+	object Submit : Action()
+	object Plus : Action()
+	object Minus : Action()
+}
+
+
 class LoginScreen @Inject constructor(
 	private val login: LoginControl,
 	private val fizzBuzz: FizzBuzzControl
 ) : Control<Action> {
 	@Composable
 	override fun view() = liveComposable<Action> {
-		val padding = LayoutPadding(12.dp)
-
-		Column(modifier = padding) {
+		Column(modifier = LayoutPadding(12.dp)) {
 			Spacer(LayoutFlexible(1f))
 			+login.view()
 			Spacer(LayoutHeight(24.dp))
 			+fizzBuzz.view().map { positive ->
-				if (positive) Action.Plus else Action.Minus
+				if (positive) Action.Plus
+				else Action.Minus
 			}
 			Spacer(LayoutFlexible(1f))
 		}
@@ -93,29 +96,26 @@ class LoginControl @Inject constructor(
 	private val model: Model
 ) : Control<Action> {
 	interface Model {
-		val username: EditorModel
+		val username: String
 		val password: String
 	}
 
 	@Composable
 	override fun view() = liveComposable<Action> {
-		val typography = MaterialTheme.typography()
-		val halfPadding = LayoutPadding(6.dp)
-
-		CurrentTextStyleProvider(value = typography.h6) {
+	  CurrentTextStyleProvider(value = MaterialTheme.typography().h6) {
 			Column {
 				Surface(
 					borderWidth = 1.dp,
 					borderBrush = SolidColor(Color.Gray),
 					shape = RoundedCornerShape(3.dp)
 				) {
-					TextField(
+				  TextField(
 						value = model.username,
 						onValueChange = { +Action.SetUsername(it) },
-						modifier = halfPadding,
+						modifier = LayoutPadding(6.dp),
 						imeAction = ImeAction.Next,
 						focusIdentifier = "username"
-					)
+				  )
 				}
 				Spacer(LayoutHeight(12.dp))
 				Surface(
@@ -147,16 +147,13 @@ class FizzBuzzControl @Inject constructor(
 
 	@Composable
 	override fun view() = liveComposable<Boolean> {
-		val typography = MaterialTheme.typography()
-		val outlined = OutlinedButtonStyle()
-
 		Column {
-			Text(text = model.text, style = typography.h4)
+			Text(text = model.text, style = MaterialTheme.typography().h4)
 			Spacer(LayoutHeight(12.dp))
 			Row {
-				Button(text = "-", style = outlined, onClick = { +false })
+				Button(text = "-", style = OutlinedButtonStyle(), onClick = { +false })
 				Spacer(LayoutWidth(12.dp))
-				Button(text = "+", style = outlined, onClick = { +true })
+				Button(text = "+", style = OutlinedButtonStyle(), onClick = { +true })
 			}
 		}
 	}
@@ -165,8 +162,8 @@ class FizzBuzzControl @Inject constructor(
 
 @Subcomponent(modules = [LoginViewModel::class])
 interface LoginComponent {
-	val screen: LoginScreen
-	val controller: Observer<Action>
+	val output: LoginScreen
+	val input: Observer<Action>
 
 	@Subcomponent.Factory
 	interface Factory {
@@ -176,10 +173,12 @@ interface LoginComponent {
 
 
 @Module
-class LoginViewModel @Inject constructor() : ViewModel() {
+class LoginViewModel(
+	private val savedState: SavedStateHandle
+) : ViewModel() {
 	@Model
 	class Form(
-		override var username: EditorModel = EditorModel(),
+		override var username: String = "",
 		override var password: String = ""
 	) : LoginControl.Model
 
@@ -217,4 +216,3 @@ class LoginViewModel @Inject constructor() : ViewModel() {
 		}
 	}
 }
-

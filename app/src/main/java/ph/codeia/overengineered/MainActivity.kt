@@ -1,14 +1,14 @@
 package ph.codeia.overengineered
 
+import android.app.Application
 import android.os.Bundle
 import androidx.appcompat.app.AppCompatActivity
 import androidx.fragment.app.FragmentFactory
-import androidx.lifecycle.ViewModelStoreOwner
-import dagger.BindsInstance
-import dagger.Component
+import androidx.lifecycle.SavedStateViewModelFactory
+import androidx.savedstate.SavedStateRegistryOwner
+import dagger.*
 import ph.codeia.shiv.Shiv
 import shiv.FragmentBindings
-import shiv.SharedViewModelProviders
 
 
 class MainActivity : AppCompatActivity(R.layout.activity_main) {
@@ -21,10 +21,11 @@ class MainActivity : AppCompatActivity(R.layout.activity_main) {
 	}
 }
 
+
 @Component(modules = [
 	Shiv::class,
-	SharedViewModelProviders::class,
-	FragmentBindings::class
+	FragmentBindings::class,
+	ActivityServices::class
 ])
 interface FragmentComponent {
 	val fragmentFactory: FragmentFactory
@@ -32,6 +33,29 @@ interface FragmentComponent {
 
 	@Component.Factory
 	interface Factory {
-		fun create(@BindsInstance owner: ViewModelStoreOwner): FragmentComponent
+		fun create(@BindsInstance parent: AppCompatActivity): FragmentComponent
+	}
+}
+
+
+@Module(includes = [ActivityServices.Providers::class])
+interface ActivityServices {
+	@Binds
+	fun stateOwner(activity: AppCompatActivity): SavedStateRegistryOwner
+
+	@Module
+	object Providers {
+		@[JvmStatic Provides]
+		fun app(activity: AppCompatActivity): Application = run {
+			activity.application
+		}
+
+		@[JvmStatic Provides]
+		fun undeadStateVmFactory(
+			app: Application,
+			stateOwner: SavedStateRegistryOwner
+		): SavedStateViewModelFactory = run {
+			SavedStateViewModelFactory(app, stateOwner)
+		}
 	}
 }

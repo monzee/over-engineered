@@ -5,7 +5,6 @@ import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.Observer
-import kotlinx.coroutines.DisposableHandle
 
 
 /*
@@ -16,13 +15,13 @@ import kotlinx.coroutines.DisposableHandle
 interface LiveComposableScope<T> {
 	val latestValue: T?
 	operator fun T.unaryPlus()
-	operator fun LiveData<T>.unaryPlus(): DisposableHandle
+	operator fun LiveData<out T>.unaryPlus(): Runnable
 }
 
 
 inline fun <T> liveComposable(
 	block: @Composable LiveComposableScope<T>.() -> Unit
-): LiveData<T> = MutableLiveData<T>().also { live ->
+): LiveData<out T> = MutableLiveData<T>().also { live ->
 	block(object : LiveComposableScope<T> {
 		override val latestValue: T? = live.value
 
@@ -30,28 +29,26 @@ inline fun <T> liveComposable(
 			live.value = it
 		}
 
-		override fun LiveData<T>.unaryPlus(): DisposableHandle = let { source ->
+		override fun LiveData<out T>.unaryPlus(): Runnable = let { source ->
 			val observer = Observer<T> { +it }
 			source.observeForever(observer)
-			object : DisposableHandle {
-				override fun dispose() {
-					source.removeObserver(observer)
-				}
+			Runnable {
+				source.removeObserver(observer)
 			}
 		}
 	})
 }
 
 
-interface Control<out O> {
+interface Control<out Event> {
 	@Composable
-	fun view(): LiveData<out O>
+	fun view(): LiveData<out Event>
 
 	companion object {
-		operator fun <T> invoke(
-			block: @Composable LiveComposableScope<T>.() -> Unit
-		) = object : Control<T> {
-			override fun view(): LiveData<out T> = liveComposable(block)
+		operator fun <Event> invoke(
+			block: @Composable LiveComposableScope<Event>.() -> Unit
+		) = object : Control<Event> {
+			override fun view(): LiveData<out Event> = liveComposable(block)
 		}
 	}
 }
