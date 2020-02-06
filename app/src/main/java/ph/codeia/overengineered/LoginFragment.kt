@@ -6,7 +6,10 @@ import android.os.Bundle
 import android.view.View
 import android.view.ViewGroup
 import android.widget.Toast
-import androidx.compose.*
+import androidx.compose.Composable
+import androidx.compose.Model
+import androidx.compose.ambient
+import androidx.compose.state
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.viewModels
 import androidx.lifecycle.*
@@ -55,11 +58,7 @@ class LoginFragment @Inject constructor(
 
 @[Preview Composable]
 fun DefaultPreview() {
-	val state = LoginViewModel.State()
-	val Screen = LoginScreen(
-		LoginControl(state),
-		FizzBuzzControl(state)
-	)
+	val Screen = LoginScreen(LoginControl(), CounterControl())
 	MaterialTheme {
 		Screen()
 	}
@@ -74,24 +73,31 @@ sealed class Action {
 	object Minus : Action()
 }
 
+private val full = 12.dp
+private val half = 6.dp
+private val double = 24.dp
+
 
 class LoginScreen @Inject constructor(
 	private val Login: LoginControl,
-	private val FizzBuzz: FizzBuzzControl
+	private val Counter: CounterControl
 ) : Control<Action> {
 	@Composable
 	override fun invoke(): LiveData<Action> = liveComposable {
-		Column(modifier = LayoutPadding(12.dp)) {
+		Column(modifier = LayoutPadding(full)) {
 			Spacer(LayoutFlexible(1f))
 			+Login()
-			Spacer(LayoutHeight(24.dp))
+			Spacer(LayoutHeight(double))
 			Row {
-				+FizzBuzz().map { positive ->
+				+Counter().map { positive ->
 					if (positive) Action.Plus
 					else Action.Minus
 				}
 				Spacer(LayoutFlexible(1f))
-				AnotherCounter()
+				+Counter().map { positive ->
+					if (positive) Action.Plus
+					else Action.Minus
+				}
 			}
 			Spacer(LayoutFlexible(1f))
 		}
@@ -102,9 +108,16 @@ class LoginScreen @Inject constructor(
 class LoginControl @Inject constructor(
 	private val model: Model
 ) : Control<Action> {
+	constructor() : this(Model)
+
 	interface Model {
 		val username: String
 		val password: String
+
+		companion object : Model {
+			override val username: String = "foo@example.com"
+			override val password: String = "hunter2"
+		}
 	}
 
 	@Composable
@@ -112,46 +125,59 @@ class LoginControl @Inject constructor(
 		val lens = ambient(FocusManagerAmbient)
 		CurrentTextStyleProvider(value = MaterialTheme.typography().h6) {
 			Column {
-				Surface(
-					borderWidth = 1.dp,
-					borderBrush = SolidColor(Color.Gray),
-					shape = RoundedCornerShape(3.dp)
-				) {
+				BorderedSurface {
 					TextField(
 						value = model.username,
 						onValueChange = { +Action.SetUsername(it) },
-						modifier = LayoutPadding(6.dp),
+						modifier = LayoutPadding(half),
 						imeAction = ImeAction.Next,
 						onImeActionPerformed = { lens.requestFocusById("password") }
 					)
 				}
-				Spacer(LayoutHeight(12.dp))
-				Surface(
-					borderWidth = 1.dp,
-					borderBrush = SolidColor(Color.Gray),
-					shape = RoundedCornerShape(3.dp)
-				) {
-					PasswordTextField(
-						value = model.password,
-						onValueChange = { +Action.SetPassword(it) },
-						imeAction = ImeAction.Done,
-						onImeActionPerformed = { +Action.Submit },
-						focusIdentifier = "password"
-					)
+				Spacer(LayoutHeight(full))
+				BorderedSurface {
+					Surface(modifier = LayoutPadding(half)) {
+						PasswordTextField(
+							value = model.password,
+							onValueChange = { +Action.SetPassword(it) },
+							imeAction = ImeAction.Done,
+							onImeActionPerformed = { +Action.Submit },
+							focusIdentifier = "password"
+						)
+					}
 				}
-				Spacer(LayoutHeight(12.dp))
+				Spacer(LayoutHeight(full))
 				Button(text = "LOGIN", onClick = { +Action.Submit })
 			}
+		}
+	}
+
+	@Composable
+	private inline fun BorderedSurface(
+		crossinline children: @Composable() () -> Unit
+	) {
+		Surface(
+			borderWidth = 1.dp,
+			borderBrush = SolidColor(Color.Gray),
+			shape = RoundedCornerShape(3.dp)
+		) {
+			children()
 		}
 	}
 }
 
 
-class FizzBuzzControl @Inject constructor(
+class CounterControl @Inject constructor(
 	private val model: Model
 ) : Control<Boolean> {
+	constructor() : this(Model)
+
 	interface Model {
 		val text: String
+
+		companion object : Model {
+			override val text: String = "Fizz"
+		}
 	}
 
 	@Composable
@@ -162,10 +188,10 @@ class FizzBuzzControl @Inject constructor(
 				style = MaterialTheme.typography().h4,
 				modifier = LayoutGravity.Center
 			)
-			Spacer(LayoutHeight(12.dp))
+			Spacer(LayoutHeight(full))
 			Row {
 				Button(text = "-", style = OutlinedButtonStyle(), onClick = { +false })
-				Spacer(LayoutWidth(12.dp))
+				Spacer(LayoutWidth(full))
 				Button(text = "+", style = OutlinedButtonStyle(), onClick = { +true })
 			}
 		}
@@ -181,11 +207,11 @@ fun AnotherCounter() {
 			style = MaterialTheme.typography().h4,
 			modifier = LayoutGravity.Center
 		)
-		Spacer(LayoutHeight(12.dp))
+		Spacer(LayoutHeight(full))
 		Row {
 			Button(text = "-", onClick = { counter -= 1 })
-			Spacer(LayoutWidth(12.dp))
-			Button(text = "+", onClick = { counter += 1})
+			Spacer(LayoutWidth(full))
+			Button(text = "+", onClick = { counter += 1 })
 		}
 	}
 }
@@ -204,15 +230,13 @@ interface LoginComponent {
 
 
 @Module
-class LoginViewModel(
-	private val savedState: SavedStateHandle
-) : ViewModel() {
+class LoginViewModel(private val savedState: SavedStateHandle) : ViewModel() {
 	@Model
-	class State(
-		internal var count: Int = 1,
-		username: String = "",
-		password: String = ""
-	) : LoginControl.Model, FizzBuzzControl.Model {
+	private class State(
+		var count: Int = 1,
+		override var username: String = "",
+		override var password: String = ""
+	) : LoginControl.Model, CounterControl.Model {
 		override val text: String
 			get() = when {
 				count % 15 == 0 -> "FizzBuzz"
@@ -220,12 +244,6 @@ class LoginViewModel(
 				count % 5 == 0 -> "Buzz"
 				else -> count.toString()
 			}
-
-		override var username: String = username
-			internal set
-
-		override var password: String = password
-			internal set
 	}
 
 	private val message = MutableLiveData<SingleUse<String>>()
@@ -237,7 +255,7 @@ class LoginViewModel(
 	val loginModel: LoginControl.Model = state
 
 	@get:Provides
-	val fizzBuzzModel: FizzBuzzControl.Model = state
+	val fizzBuzzModel: CounterControl.Model = state
 
 	@get:Provides
 	val controller: Observer<Action> = Observer {
