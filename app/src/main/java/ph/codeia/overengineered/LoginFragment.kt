@@ -1,11 +1,12 @@
+@file:Suppress("PropertyName", "LocalVariableName")
+
 package ph.codeia.overengineered
 
 import android.os.Bundle
 import android.view.View
 import android.view.ViewGroup
 import android.widget.Toast
-import androidx.compose.Composable
-import androidx.compose.Model
+import androidx.compose.*
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.viewModels
 import androidx.lifecycle.*
@@ -33,16 +34,16 @@ import javax.inject.Inject
 
 class LoginFragment @Inject constructor(
 	private val loginComponent: LoginComponent.Factory,
-	zombies: SavedStateViewModelFactory
+	andZombies: SavedStateViewModelFactory
 ) : Fragment(R.layout.empty) {
-	private val viewModel: LoginViewModel by viewModels { zombies }
+	private val viewModel: LoginViewModel by viewModels { andZombies }
 
 	override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
 		val login = loginComponent.bind(viewModel)
 		val lifetime = viewLifecycleOwner
 		(view as ViewGroup).setContent {
 			MaterialTheme {
-				login.output.view().observe(lifetime, login.input)
+				login.Output().observe(lifetime, login.input)
 			}
 		}
 		viewModel.toasts.consume(lifetime) {
@@ -54,11 +55,13 @@ class LoginFragment @Inject constructor(
 
 @[Preview Composable]
 fun DefaultPreview() {
+	val state = LoginViewModel.State()
+	val Screen = LoginScreen(
+		LoginControl(state),
+		FizzBuzzControl(state)
+	)
 	MaterialTheme {
-		LoginScreen(
-			LoginControl(LoginViewModel.Form()),
-			FizzBuzzControl(LoginViewModel.Counter())
-		).view()
+		Screen()
 	}
 }
 
@@ -73,18 +76,22 @@ sealed class Action {
 
 
 class LoginScreen @Inject constructor(
-	private val login: LoginControl,
-	private val fizzBuzz: FizzBuzzControl
+	private val Login: LoginControl,
+	private val FizzBuzz: FizzBuzzControl
 ) : Control<Action> {
 	@Composable
-	override fun view() = liveComposable<Action> {
+	override fun invoke(): LiveData<Action> = liveComposable {
 		Column(modifier = LayoutPadding(12.dp)) {
 			Spacer(LayoutFlexible(1f))
-			+login.view()
+			+Login()
 			Spacer(LayoutHeight(24.dp))
-			+fizzBuzz.view().map { positive ->
-				if (positive) Action.Plus
-				else Action.Minus
+			Row {
+				+FizzBuzz().map { positive ->
+					if (positive) Action.Plus
+					else Action.Minus
+				}
+				Spacer(LayoutFlexible(1f))
+				AnotherCounter()
 			}
 			Spacer(LayoutFlexible(1f))
 		}
@@ -101,21 +108,22 @@ class LoginControl @Inject constructor(
 	}
 
 	@Composable
-	override fun view() = liveComposable<Action> {
-	  CurrentTextStyleProvider(value = MaterialTheme.typography().h6) {
+	override fun invoke(): LiveData<Action> = liveComposable {
+		val lens = ambient(FocusManagerAmbient)
+		CurrentTextStyleProvider(value = MaterialTheme.typography().h6) {
 			Column {
 				Surface(
 					borderWidth = 1.dp,
 					borderBrush = SolidColor(Color.Gray),
 					shape = RoundedCornerShape(3.dp)
 				) {
-				  TextField(
+					TextField(
 						value = model.username,
 						onValueChange = { +Action.SetUsername(it) },
 						modifier = LayoutPadding(6.dp),
 						imeAction = ImeAction.Next,
-						focusIdentifier = "username"
-				  )
+						onImeActionPerformed = { lens.requestFocusById("password") }
+					)
 				}
 				Spacer(LayoutHeight(12.dp))
 				Surface(
@@ -127,6 +135,7 @@ class LoginControl @Inject constructor(
 						value = model.password,
 						onValueChange = { +Action.SetPassword(it) },
 						imeAction = ImeAction.Done,
+						onImeActionPerformed = { +Action.Submit },
 						focusIdentifier = "password"
 					)
 				}
@@ -146,9 +155,13 @@ class FizzBuzzControl @Inject constructor(
 	}
 
 	@Composable
-	override fun view() = liveComposable<Boolean> {
+	override fun invoke(): LiveData<Boolean> = liveComposable {
 		Column {
-			Text(text = model.text, style = MaterialTheme.typography().h4)
+			Text(
+				text = model.text,
+				style = MaterialTheme.typography().h4,
+				modifier = LayoutGravity.Center
+			)
 			Spacer(LayoutHeight(12.dp))
 			Row {
 				Button(text = "-", style = OutlinedButtonStyle(), onClick = { +false })
@@ -159,11 +172,29 @@ class FizzBuzzControl @Inject constructor(
 	}
 }
 
+@Composable
+fun AnotherCounter() {
+	var counter: Int by state { 1 }
+	Column {
+		Text(
+			text = counter.toString(),
+			style = MaterialTheme.typography().h4,
+			modifier = LayoutGravity.Center
+		)
+		Spacer(LayoutHeight(12.dp))
+		Row {
+			Button(text = "-", onClick = { counter -= 1 })
+			Spacer(LayoutWidth(12.dp))
+			Button(text = "+", onClick = { counter += 1})
+		}
+	}
+}
+
 
 @Subcomponent(modules = [LoginViewModel::class])
 interface LoginComponent {
-	val output: LoginScreen
 	val input: Observer<Action>
+	val Output: LoginScreen
 
 	@Subcomponent.Factory
 	interface Factory {
@@ -177,13 +208,11 @@ class LoginViewModel(
 	private val savedState: SavedStateHandle
 ) : ViewModel() {
 	@Model
-	class Form(
-		override var username: String = "",
-		override var password: String = ""
-	) : LoginControl.Model
-
-	@Model
-	class Counter(var count: Int = 1) : FizzBuzzControl.Model {
+	class State(
+		internal var count: Int = 1,
+		username: String = "",
+		password: String = ""
+	) : LoginControl.Model, FizzBuzzControl.Model {
 		override val text: String
 			get() = when {
 				count % 15 == 0 -> "FizzBuzz"
@@ -191,27 +220,32 @@ class LoginViewModel(
 				count % 5 == 0 -> "Buzz"
 				else -> count.toString()
 			}
+
+		override var username: String = username
+			internal set
+
+		override var password: String = password
+			internal set
 	}
 
-	private val login = Form()
-	private val counter = Counter()
 	private val message = MutableLiveData<SingleUse<String>>()
+	private val state = State()
 
 	val toasts: LiveData<SingleUse<String>> = message
 
 	@get:Provides
-	val loginModel: LoginControl.Model = login
+	val loginModel: LoginControl.Model = state
 
 	@get:Provides
-	val fizzBuzzModel: FizzBuzzControl.Model = counter
+	val fizzBuzzModel: FizzBuzzControl.Model = state
 
 	@get:Provides
 	val controller: Observer<Action> = Observer {
 		when (it) {
-			Action.Plus -> counter.count += 1
-			Action.Minus -> counter.count -= 1
-			is Action.SetUsername -> login.username = it.value
-			is Action.SetPassword -> login.password = it.value
+			Action.Plus -> state.count += 1
+			Action.Minus -> state.count -= 1
+			is Action.SetUsername -> state.username = it.value
+			is Action.SetPassword -> state.password = it.value
 			Action.Submit -> message.unwrapped = "Received submission."
 		}
 	}

@@ -15,13 +15,13 @@ import androidx.lifecycle.Observer
 interface LiveComposableScope<T> {
 	val latestValue: T?
 	operator fun T.unaryPlus()
-	operator fun LiveData<out T>.unaryPlus(): Runnable
+	operator fun LiveData<T>.unaryPlus(): () -> Unit
 }
 
 
 inline fun <T> liveComposable(
 	block: @Composable LiveComposableScope<T>.() -> Unit
-): LiveData<out T> = MutableLiveData<T>().also { live ->
+): LiveData<T> = MutableLiveData<T>().also { live ->
 	block(object : LiveComposableScope<T> {
 		override val latestValue: T? = live.value
 
@@ -29,12 +29,10 @@ inline fun <T> liveComposable(
 			live.value = it
 		}
 
-		override fun LiveData<out T>.unaryPlus(): Runnable = let { source ->
+		override fun LiveData<T>.unaryPlus(): () -> Unit = let { source ->
 			val observer = Observer<T> { +it }
 			source.observeForever(observer)
-			Runnable {
-				source.removeObserver(observer)
-			}
+			({ source.removeObserver(observer) })
 		}
 	})
 }
@@ -42,13 +40,13 @@ inline fun <T> liveComposable(
 
 interface Control<out Event> {
 	@Composable
-	fun view(): LiveData<out Event>
+	operator fun invoke(): LiveData<out Event>
 
 	companion object {
-		operator fun <Event> invoke(
-			block: @Composable LiveComposableScope<Event>.() -> Unit
+		inline operator fun <Event> invoke(
+			crossinline block: @Composable LiveComposableScope<Event>.() -> Unit
 		) = object : Control<Event> {
-			override fun view(): LiveData<out Event> = liveComposable(block)
+			override fun invoke(): LiveData<Event> = liveComposable(block)
 		}
 	}
 }
