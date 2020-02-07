@@ -1,4 +1,4 @@
-@file:Suppress("PropertyName", "LocalVariableName")
+@file:Suppress("LocalVariableName")
 
 package ph.codeia.overengineered
 
@@ -44,9 +44,10 @@ class LoginFragment @Inject constructor(
 	override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
 		val login = loginComponent.bind(viewModel)
 		val lifetime = viewLifecycleOwner
+		val Screen = login.output
 		(view as ViewGroup).setContent {
 			MaterialTheme {
-				login.Output().observe(lifetime, login.input)
+				Screen().observe(lifetime, login.input)
 			}
 		}
 		viewModel.toasts.consume(lifetime) {
@@ -73,41 +74,38 @@ sealed class Action {
 	object Minus : Action()
 }
 
-private val full = 12.dp
-private val half = 6.dp
-private val double = 24.dp
+private val base = 12.dp
+private val half = base / 2
+private val double = base * 2
 
 
 class LoginScreen @Inject constructor(
 	private val Login: LoginControl,
 	private val Counter: CounterControl
-) : Control<Action> {
+) {
 	@Composable
-	override fun invoke(): LiveData<Action> = liveComposable {
-		Column(modifier = LayoutPadding(full)) {
+	operator fun invoke(): LiveData<Action> = liveComposable {
+		Column(modifier = LayoutPadding(base)) {
 			Spacer(LayoutFlexible(1f))
 			+Login()
 			Spacer(LayoutHeight(double))
 			Row {
-				+Counter().map { positive ->
-					if (positive) Action.Plus
-					else Action.Minus
-				}
+				+Counter().map(::toAction)
 				Spacer(LayoutFlexible(1f))
-				+Counter().map { positive ->
-					if (positive) Action.Plus
-					else Action.Minus
-				}
+				+Counter().map(::toAction)
 			}
 			Spacer(LayoutFlexible(1f))
 		}
 	}
+
+	private fun toAction(positive: Boolean): Action = run {
+		if (positive) Action.Plus
+		else Action.Minus
+	}
 }
 
 
-class LoginControl @Inject constructor(
-	private val model: Model
-) : Control<Action> {
+class LoginControl @Inject constructor(private val model: Model) {
 	constructor() : this(Model)
 
 	interface Model {
@@ -121,55 +119,52 @@ class LoginControl @Inject constructor(
 	}
 
 	@Composable
-	override fun invoke(): LiveData<Action> = liveComposable {
+	operator fun invoke(): LiveData<Action> = liveComposable {
 		val lens = ambient(FocusManagerAmbient)
-		CurrentTextStyleProvider(value = MaterialTheme.typography().h6) {
+		CurrentTextStyleProvider(MaterialTheme.typography().h6) {
 			Column {
-				BorderedSurface {
+				Boundary {
 					TextField(
-						value = model.username,
-						onValueChange = { +Action.SetUsername(it) },
-						modifier = LayoutPadding(half),
 						imeAction = ImeAction.Next,
-						onImeActionPerformed = { lens.requestFocusById("password") }
+						onImeActionPerformed = { lens.requestFocusById("password") },
+						onValueChange = { +Action.SetUsername(it) },
+						value = model.username
 					)
 				}
-				Spacer(LayoutHeight(full))
-				BorderedSurface {
-					Surface(modifier = LayoutPadding(half)) {
-						PasswordTextField(
-							value = model.password,
-							onValueChange = { +Action.SetPassword(it) },
-							imeAction = ImeAction.Done,
-							onImeActionPerformed = { +Action.Submit },
-							focusIdentifier = "password"
-						)
-					}
+				Spacer(LayoutHeight(base))
+				Boundary {
+					PasswordTextField(
+						focusIdentifier = "password",
+						imeAction = ImeAction.Done,
+						onImeActionPerformed = { +Action.Submit },
+						onValueChange = { +Action.SetPassword(it) },
+						value = model.password
+					)
 				}
-				Spacer(LayoutHeight(full))
+				Spacer(LayoutHeight(base))
 				Button(text = "LOGIN", onClick = { +Action.Submit })
 			}
 		}
 	}
 
 	@Composable
-	private inline fun BorderedSurface(
+	private inline fun Boundary(
 		crossinline children: @Composable() () -> Unit
 	) {
 		Surface(
-			borderWidth = 1.dp,
 			borderBrush = SolidColor(Color.Gray),
+			borderWidth = 1.dp,
 			shape = RoundedCornerShape(3.dp)
 		) {
-			children()
+			Container(modifier = LayoutPadding(half)) {
+				children()
+			}
 		}
 	}
 }
 
 
-class CounterControl @Inject constructor(
-	private val model: Model
-) : Control<Boolean> {
+class CounterControl @Inject constructor(private val model: Model) {
 	constructor() : this(Model)
 
 	interface Model {
@@ -181,17 +176,18 @@ class CounterControl @Inject constructor(
 	}
 
 	@Composable
-	override fun invoke(): LiveData<Boolean> = liveComposable {
+	operator fun invoke(): LiveData<Boolean> = liveComposable {
+		val outlinedButton = OutlinedButtonStyle()
 		Column {
 			Text(
-				text = model.text,
+				modifier = LayoutGravity.Center,
 				style = MaterialTheme.typography().h4,
-				modifier = LayoutGravity.Center
+				text = model.text
 			)
-			Spacer(LayoutHeight(full))
+			Spacer(LayoutHeight(base))
 			Row {
 				Button(text = "-", style = OutlinedButtonStyle(), onClick = { +false })
-				Spacer(LayoutWidth(full))
+				Spacer(LayoutWidth(base))
 				Button(text = "+", style = OutlinedButtonStyle(), onClick = { +true })
 			}
 		}
@@ -203,15 +199,15 @@ fun AnotherCounter() {
 	var counter: Int by state { 1 }
 	Column {
 		Text(
-			text = counter.toString(),
+			modifier = LayoutGravity.Center,
 			style = MaterialTheme.typography().h4,
-			modifier = LayoutGravity.Center
+			text = counter.toString()
 		)
-		Spacer(LayoutHeight(full))
+		Spacer(LayoutHeight(base))
 		Row {
-			Button(text = "-", onClick = { counter -= 1 })
-			Spacer(LayoutWidth(full))
-			Button(text = "+", onClick = { counter += 1 })
+			Button(onClick = { counter -= 1 }, text = "-")
+			Spacer(LayoutWidth(base))
+			Button(onClick = { counter += 1 }, text = "-")
 		}
 	}
 }
@@ -220,7 +216,7 @@ fun AnotherCounter() {
 @Subcomponent(modules = [LoginViewModel::class])
 interface LoginComponent {
 	val input: Observer<Action>
-	val Output: LoginScreen
+	val output: LoginScreen
 
 	@Subcomponent.Factory
 	interface Factory {

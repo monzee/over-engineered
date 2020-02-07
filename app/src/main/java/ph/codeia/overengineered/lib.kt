@@ -1,11 +1,7 @@
 package ph.codeia.overengineered
 
 import androidx.compose.Composable
-import androidx.lifecycle.LifecycleOwner
-import androidx.lifecycle.LiveData
-import androidx.lifecycle.MutableLiveData
-import androidx.lifecycle.Observer
-
+import androidx.lifecycle.*
 
 /*
  * This file is a part of the Over Engineered project.
@@ -21,34 +17,19 @@ interface LiveComposableScope<T> {
 
 inline fun <T> liveComposable(
 	block: @Composable LiveComposableScope<T>.() -> Unit
-): LiveData<T> = MutableLiveData<T>().also { live ->
+): LiveData<T> = MediatorLiveData<T>().also { dest ->
 	block(object : LiveComposableScope<T> {
-		override val latestValue: T? = live.value
+		override val latestValue: T? = dest.value
 
 		override fun T.unaryPlus() = let {
-			live.value = it
+			dest.value = it
 		}
 
-		override fun LiveData<T>.unaryPlus(): () -> Unit = let { source ->
-			val observer = Observer<T> { +it }
-			source.observeForever(observer)
-			({ source.removeObserver(observer) })
+		override fun LiveData<T>.unaryPlus(): () -> Unit = let { src ->
+			dest.addSource(src) { +it }
+			({ dest.removeSource(src) })
 		}
 	})
-}
-
-
-interface Control<out Event> {
-	@Composable
-	operator fun invoke(): LiveData<out Event>
-
-	companion object {
-		inline operator fun <Event> invoke(
-			crossinline block: @Composable LiveComposableScope<Event>.() -> Unit
-		) = object : Control<Event> {
-			override fun invoke(): LiveData<Event> = liveComposable(block)
-		}
-	}
 }
 
 
