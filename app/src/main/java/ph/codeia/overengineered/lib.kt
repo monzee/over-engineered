@@ -1,6 +1,8 @@
 package ph.codeia.overengineered
 
 import androidx.compose.Composable
+import androidx.compose.Model
+import androidx.compose.remember
 import androidx.lifecycle.*
 
 /*
@@ -15,6 +17,7 @@ interface LiveComposableScope<T> {
 }
 
 
+@Composable
 inline fun <T> liveComposable(
 	block: @Composable LiveComposableScope<T>.() -> Unit
 ): LiveData<T> = MediatorLiveData<T>().also { dest ->
@@ -67,4 +70,39 @@ fun <T: Any> MutableLiveData<SingleUse<T>>.setValue(value: T?) {
 
 fun <T: Any> MutableLiveData<SingleUse<T>>.postValue(value: T?) {
 	postValue(value?.let(::SingleUse))
+}
+
+
+@Model
+class StateMachine<S: Any, E>(
+	initialState: S,
+	private val foldNotNull: (S, E) -> S?
+) {
+	var value: S = initialState
+		private set
+
+	fun dispatch(event: E) {
+		foldNotNull(value, event)?.let {
+			value = it
+		}
+	}
+
+	operator fun component1(): S = value
+	operator fun component2(): (E) -> Unit = ::dispatch
+}
+
+
+@Composable
+fun <S: Any, E> scan(initial: S, reducer: (S, E) -> S?) = remember {
+	StateMachine(initial, reducer)
+}
+
+
+@Composable
+@JvmName("flipScan")
+inline fun <S: Any, E> scan(
+	initial: S,
+	crossinline reducer: (E, S) -> S?
+) = remember {
+	StateMachine(initial) { state, event: E -> reducer(event, state) }
 }

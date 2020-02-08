@@ -1,9 +1,6 @@
 package ph.codeia.overengineered.controls
 
-import androidx.compose.Composable
-import androidx.compose.Model
-import androidx.compose.ambient
-import androidx.compose.stateFor
+import androidx.compose.*
 import androidx.ui.core.Modifier
 import androidx.ui.core.PasswordTextField
 import androidx.ui.core.TextField
@@ -41,8 +38,8 @@ fun EditControl(
 	modifier: Modifier = Modifier.None,
 	onBlur: Procedure = NoOp,
 	onFocus: Procedure = NoOp,
-	onImeAction: Callback<ImeAction> = Sink,
-	onValueChange: Callback<String> = Sink,
+	onImeAction: Sink<ImeAction> = Pass,
+	onValueChange: Sink<String> = Pass,
 	value: String = ""
 ) = EditControl(EditControl.State(value, error, hint)).also {
 	it.Place(
@@ -67,13 +64,13 @@ class EditControl(val state: State) {
 		modifier: Modifier = Modifier.None,
 		onBlur: Procedure = NoOp,
 		onFocus: Procedure = NoOp,
-		onImeAction: Callback<ImeAction> = Sink,
-		onValueChange: Callback<String> = Sink
+		onImeAction: Sink<ImeAction> = Pass,
+		onValueChange: Sink<String> = Pass
 	) {
 		val borderColor by stateFor(state.error) {
 			state.error?.let { Color.Red } ?: Color.Gray
 		}
-		val size = ambient(Spacing)
+		val size = ambient(Sizes)
 		Surface(
 			borderWidth = 1.dp,
 			borderBrush = SolidColor(borderColor),

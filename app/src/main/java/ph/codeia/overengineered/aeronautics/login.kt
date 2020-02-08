@@ -9,8 +9,8 @@ import javax.inject.Inject
 
 
 sealed class Action {
-	class SetUsername(val value: CharSequence) : Action()
-	class SetPassword(val value: CharSequence) : Action()
+	class SetUsername(val value: String) : Action()
+	class SetPassword(val value: String) : Action()
 	object Submit : Action()
 }
 
@@ -39,10 +39,10 @@ class Validate @Inject constructor(
 class SetFieldValue(
 	private val validate: Validate,
 	private val tag: Get<Progress<*, *>>,
-	@LateBound private val value: CharSequence
+	@LateBound private val setValue: Put<String>
 ) {
-	operator fun invoke(setValue: Put<String>) {
-		setValue(value.trim().toString())
+	operator fun invoke(value: String) {
+		setValue(value.trim())
 		if (tag() is Progress.Active) {
 			validate()
 		}
@@ -52,16 +52,16 @@ class SetFieldValue(
 class Submit @Inject constructor(
 	private val auth: AuthService,
 	private val credentials: Get<Credentials>,
-	private val progress: Put<Progress<Nothing, String>>
+	private val next: Put<Progress<Nothing, String>>
 ) {
 	suspend operator fun invoke() {
-		progress(Progress.Busy)
+		next(Progress.Busy)
 		try {
 			val token = auth.login(credentials())
-			progress(Progress.Done(token))
+			next(Progress.Done(token))
 		}
 		catch (error: Exception) {
-			progress(Progress.Failed(error))
+			next(Progress.Failed(error))
 		}
 	}
 }

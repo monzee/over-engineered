@@ -12,7 +12,7 @@ import androidx.ui.material.MaterialTheme
 import androidx.ui.tooling.preview.Preview
 import ph.codeia.overengineered.controls.EditControl
 import ph.codeia.overengineered.controls.FieldType
-import ph.codeia.overengineered.controls.Spacing
+import ph.codeia.overengineered.controls.Sizes
 import ph.codeia.overengineered.liveComposable
 import javax.inject.Inject
 
@@ -26,11 +26,11 @@ private fun loginForm() {
 	val model = LoginModel()
 	model.setUsername("foo@example.com")
 	model.setPassword("hunter2")
-	LoginBlock(model)()
+	LoginSegment(model)()
 }
 
 
-class LoginBlock @Inject constructor(private val model: LoginModel) {
+class LoginSegment @Inject constructor(private val model: LoginModel) {
 	@Composable
 	operator fun invoke() = run {
 		invoke(model)
@@ -47,7 +47,7 @@ class LoginBlock @Inject constructor(private val model: LoginModel) {
 		}
 
 		val typography = MaterialTheme.typography()
-		val size = ambient(Spacing)
+		val size = ambient(Sizes)
 		val focus = ambient(FocusManagerAmbient)
 		CurrentTextStyleProvider(typography.h6) {
 			Column {
@@ -58,7 +58,7 @@ class LoginBlock @Inject constructor(private val model: LoginModel) {
 					onValueChange = { +Action.SetUsername(it) },
 					value = credentials.username
 				)
-				Spacer(LayoutHeight(size.base))
+				Spacer(LayoutHeight(size.unit))
 				EditControl(
 					error = passwordError,
 					fieldType = FieldType.Password,

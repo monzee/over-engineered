@@ -46,12 +46,12 @@ class LoginModel {
 	): Observer<Action> = Observer { action ->
 		when (action) {
 			is Action.SetUsername -> {
-				val setUsername = setValue.bind(action.value)
-				setUsername { username = it }
+				val setUsername = setValue.bind { username = it }
+				setUsername(action.value)
 			}
 			is Action.SetPassword -> {
-				val setPassword = setValue.bind(action.value)
-				setPassword { password = it }
+				val setPassword = setValue.bind { password = it }
+				setPassword(action.value)
 			}
 			Action.Submit -> scope.launch {
 				submit()
@@ -67,4 +67,3 @@ class LoginModel {
 		password = value
 	}
 }
-

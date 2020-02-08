@@ -9,7 +9,7 @@ import android.widget.Toast
 import androidx.compose.Composable
 import androidx.compose.Model
 import androidx.compose.ambient
-import androidx.compose.state
+import androidx.compose.stateFor
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.viewModels
 import androidx.lifecycle.*
@@ -35,19 +35,18 @@ import javax.inject.Inject
  */
 
 
-class LoginFragment @Inject constructor(
-	private val loginComponent: LoginComponent.Factory,
+class LabFragment @Inject constructor(
+	private val loginView: LoginView.Binder,
 	andZombies: SavedStateViewModelFactory
 ) : Fragment(R.layout.empty) {
 	private val viewModel: LoginViewModel by viewModels { andZombies }
 
 	override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
-		val login = loginComponent.bind(viewModel)
+		val login = loginView.bind(viewModel)
 		val lifetime = viewLifecycleOwner
-		val Screen = login.output
 		(view as ViewGroup).setContent {
 			MaterialTheme {
-				Screen().observe(lifetime, login.input)
+				login.output().observe(lifetime, login.input)
 			}
 		}
 		viewModel.toasts.consume(lifetime) {
@@ -59,9 +58,9 @@ class LoginFragment @Inject constructor(
 
 @[Preview Composable]
 fun DefaultPreview() {
-	val Screen = LoginScreen(LoginControl(), CounterControl())
+	val Body = LoginControl(FormControl(), CounterControl())
 	MaterialTheme {
-		Screen()
+		Body()
 	}
 }
 
@@ -79,33 +78,28 @@ private val half = base / 2
 private val double = base * 2
 
 
-class LoginScreen @Inject constructor(
-	private val Login: LoginControl,
+class LoginControl @Inject constructor(
+	private val Form: FormControl,
 	private val Counter: CounterControl
 ) {
 	@Composable
 	operator fun invoke(): LiveData<Action> = liveComposable {
 		Column(modifier = LayoutPadding(base)) {
 			Spacer(LayoutFlexible(1f))
-			+Login()
+			+Form()
 			Spacer(LayoutHeight(double))
 			Row {
-				+Counter().map(::toAction)
+				+Counter().map { if (it) Action.Plus else Action.Minus }
 				Spacer(LayoutFlexible(1f))
-				+Counter().map(::toAction)
+				AnotherCounter()
 			}
 			Spacer(LayoutFlexible(1f))
 		}
 	}
-
-	private fun toAction(positive: Boolean): Action = run {
-		if (positive) Action.Plus
-		else Action.Minus
-	}
 }
 
 
-class LoginControl @Inject constructor(private val model: Model) {
+class FormControl @Inject constructor(private val model: Model) {
 	constructor() : this(Model)
 
 	interface Model {
@@ -123,7 +117,7 @@ class LoginControl @Inject constructor(private val model: Model) {
 		val lens = ambient(FocusManagerAmbient)
 		CurrentTextStyleProvider(MaterialTheme.typography().h6) {
 			Column {
-				Boundary {
+				FieldDecoration {
 					TextField(
 						imeAction = ImeAction.Next,
 						onImeActionPerformed = { lens.requestFocusById("password") },
@@ -132,7 +126,7 @@ class LoginControl @Inject constructor(private val model: Model) {
 					)
 				}
 				Spacer(LayoutHeight(base))
-				Boundary {
+				FieldDecoration {
 					PasswordTextField(
 						focusIdentifier = "password",
 						imeAction = ImeAction.Done,
@@ -148,11 +142,16 @@ class LoginControl @Inject constructor(private val model: Model) {
 	}
 
 	@Composable
-	private inline fun Boundary(
+	internal inline fun FieldDecoration(
+		error: String? = null,
 		crossinline children: @Composable() () -> Unit
 	) {
+		val borderColor by stateFor(error) {
+			if (error == null) Color.Gray
+			else Color.Red
+		}
 		Surface(
-			borderBrush = SolidColor(Color.Gray),
+			borderBrush = SolidColor(borderColor),
 			borderWidth = 1.dp,
 			shape = RoundedCornerShape(3.dp)
 		) {
@@ -177,7 +176,6 @@ class CounterControl @Inject constructor(private val model: Model) {
 
 	@Composable
 	operator fun invoke(): LiveData<Boolean> = liveComposable {
-		val outlinedButton = OutlinedButtonStyle()
 		Column {
 			Text(
 				modifier = LayoutGravity.Center,
@@ -186,41 +184,51 @@ class CounterControl @Inject constructor(private val model: Model) {
 			)
 			Spacer(LayoutHeight(base))
 			Row {
-				Button(text = "-", style = OutlinedButtonStyle(), onClick = { +false })
+				val outlinedButton = OutlinedButtonStyle()
+				Button(text = "-", style = outlinedButton, onClick = { +false })
 				Spacer(LayoutWidth(base))
-				Button(text = "+", style = OutlinedButtonStyle(), onClick = { +true })
+				Button(text = "+", style = outlinedButton, onClick = { +true })
 			}
 		}
 	}
 }
 
+enum class Event {
+	Inc, Dec;
+
+	fun reduce(n: Int): Int? = when (this) {
+		Inc -> n + 1
+		Dec -> n - 1
+	}
+}
+
 @Composable
 fun AnotherCounter() {
-	var counter: Int by state { 1 }
+	val (count, next) = scan(0, Event::reduce)
 	Column {
 		Text(
 			modifier = LayoutGravity.Center,
 			style = MaterialTheme.typography().h4,
-			text = counter.toString()
+			text = count.toString()
 		)
 		Spacer(LayoutHeight(base))
 		Row {
-			Button(onClick = { counter -= 1 }, text = "-")
+			Button(onClick = { next(Event.Dec) }, text = "-")
 			Spacer(LayoutWidth(base))
-			Button(onClick = { counter += 1 }, text = "-")
+			Button(onClick = { next(Event.Inc) }, text = "+")
 		}
 	}
 }
 
 
 @Subcomponent(modules = [LoginViewModel::class])
-interface LoginComponent {
+interface LoginView {
 	val input: Observer<Action>
-	val output: LoginScreen
+	val output: LoginControl
 
 	@Subcomponent.Factory
-	interface Factory {
-		fun bind(viewModel: LoginViewModel): LoginComponent
+	interface Binder {
+		fun bind(viewModel: LoginViewModel): LoginView
 	}
 }
 
@@ -232,7 +240,7 @@ class LoginViewModel(private val savedState: SavedStateHandle) : ViewModel() {
 		var count: Int = 1,
 		override var username: String = "",
 		override var password: String = ""
-	) : LoginControl.Model, CounterControl.Model {
+	) : FormControl.Model, CounterControl.Model {
 		override val text: String
 			get() = when {
 				count % 15 == 0 -> "FizzBuzz"
@@ -248,7 +256,7 @@ class LoginViewModel(private val savedState: SavedStateHandle) : ViewModel() {
 	val toasts: LiveData<SingleUse<String>> = message
 
 	@get:Provides
-	val loginModel: LoginControl.Model = state
+	val formModel: FormControl.Model = state
 
 	@get:Provides
 	val fizzBuzzModel: CounterControl.Model = state

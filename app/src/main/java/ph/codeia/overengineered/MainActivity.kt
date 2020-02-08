@@ -29,7 +29,7 @@ class MainActivity : AppCompatActivity(R.layout.activity_main) {
 ])
 interface FragmentComponent {
 	val fragmentFactory: FragmentFactory
-	val loginComponentFactory: LoginComponent.Factory
+	val loginViewBinder: LoginView.Binder
 
 	@Component.Factory
 	interface Factory {
