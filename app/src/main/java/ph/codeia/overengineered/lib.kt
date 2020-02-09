@@ -75,14 +75,14 @@ fun <T: Any> MutableLiveData<SingleUse<T>>.postValue(value: T?) {
 
 @Model
 class StateMachine<S: Any, E>(
-	initialState: S,
-	private val foldNotNull: (S, E) -> S?
+	initial: S,
+	private val accumulate: (S, E) -> S?
 ) {
-	var value: S = initialState
+	var value: S = initial
 		private set
 
 	fun dispatch(event: E) {
-		foldNotNull(value, event)?.let {
+		accumulate(value, event)?.let {
 			value = it
 		}
 	}
@@ -93,8 +93,8 @@ class StateMachine<S: Any, E>(
 
 
 @Composable
-fun <S: Any, E> scan(initial: S, reducer: (S, E) -> S?) = remember {
-	StateMachine(initial, reducer)
+fun <S: Any, E> scan(initial: S, accumulate: (S, E) -> S?) = remember {
+	StateMachine(initial, accumulate)
 }
 
 
@@ -102,7 +102,7 @@ fun <S: Any, E> scan(initial: S, reducer: (S, E) -> S?) = remember {
 @JvmName("flipScan")
 inline fun <S: Any, E> scan(
 	initial: S,
-	crossinline reducer: (E, S) -> S?
+	crossinline accumulate: (E, S) -> S?
 ) = remember {
-	StateMachine(initial) { state, event: E -> reducer(event, state) }
+	StateMachine(initial) { state, event: E -> accumulate(event, state) }
 }

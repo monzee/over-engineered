@@ -196,7 +196,7 @@ class CounterControl @Inject constructor(private val model: Model) {
 enum class Event {
 	Inc, Dec;
 
-	fun reduce(n: Int): Int? = when (this) {
+	fun fold(n: Int): Int = when (this) {
 		Inc -> n + 1
 		Dec -> n - 1
 	}
@@ -204,7 +204,7 @@ enum class Event {
 
 @Composable
 fun AnotherCounter() {
-	val (count, next) = scan(0, Event::reduce)
+	val (count, next) = scan(0, Event::fold)
 	Column {
 		Text(
 			modifier = LayoutGravity.Center,
