@@ -36,8 +36,8 @@ fun EditControl(
 	hint: String? = null,
 	imeAction: ImeAction = ImeAction.Unspecified,
 	modifier: Modifier = Modifier.None,
-	onBlur: Process = NoOp,
-	onFocus: Process = NoOp,
+	onBlur: Procedure = NoOp,
+	onFocus: Procedure = NoOp,
 	onImeAction: Sink<ImeAction> = Pass,
 	onValueChange: Sink<String> = Pass,
 	value: String = ""
@@ -62,8 +62,8 @@ class EditControl(val state: State) {
 		focusIdentifier: String? = null,
 		imeAction: ImeAction = ImeAction.Unspecified,
 		modifier: Modifier = Modifier.None,
-		onBlur: Process = NoOp,
-		onFocus: Process = NoOp,
+		onBlur: Procedure = NoOp,
+		onFocus: Procedure = NoOp,
 		onImeAction: Sink<ImeAction> = Pass,
 		onValueChange: Sink<String> = Pass
 	) {

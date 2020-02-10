@@ -13,12 +13,12 @@ import androidx.ui.unit.dp
 
 
 typealias Block<T, R> = (T) -> R
-typealias Children = @Composable Process
+typealias Children = @Composable Procedure
 typealias Field<C, R> = C.() -> R
 typealias InContext<C> = Field<C, Unit>
 typealias Method<C, T, R> = C.(T) -> R
 typealias Predicate<T> = Block<T, Boolean>
-typealias Process = Value<Unit>
+typealias Procedure = Value<Unit>
 typealias Sink<T> = Block<T, Unit>
 typealias Value<R> = () -> R
 
@@ -26,7 +26,7 @@ val Always: Predicate<Any> = { true }
 val BlackHole: Block<Any, Nothing> = { error("Unimplemented block") }
 val Missing: Value<Nothing> = { error("Unimplemented property") }
 val Never: Predicate<Any> = { false }
-val NoOp: Process = {}
+val NoOp: Procedure = {}
 val Pass: Sink<Any> = {}
 val Sizes: Ambient<Metrics> = Ambient.of { Metrics(12) }
 
