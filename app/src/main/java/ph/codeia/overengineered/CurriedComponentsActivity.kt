@@ -13,9 +13,7 @@ import androidx.ui.layout.*
 import androidx.ui.material.Button
 import androidx.ui.material.MaterialTheme
 import androidx.ui.unit.dp
-import ph.codeia.overengineered.controls.InContext
-import ph.codeia.overengineered.controls.Procedure
-import ph.codeia.overengineered.controls.Sink
+import ph.codeia.overengineered.controls.*
 
 class CurriedComponentsActivity : AppCompatActivity() {
 	override fun onCreate(savedInstanceState: Bundle?) {
@@ -25,6 +23,7 @@ class CurriedComponentsActivity : AppCompatActivity() {
 			MaterialTheme {
 				Column(
 					arrangement = Arrangement.Center,
+					modifier = LayoutPadding(12.dp),
 					children = Body(
 						text = viewModel.text,
 						controls = Input(
@@ -40,17 +39,20 @@ class CurriedComponentsActivity : AppCompatActivity() {
 
 fun Body(
 	text: String,
-	controls: @Composable Sink<Modifier>
-): @Composable InContext<ColumnScope> = {
+	controls: @Composable CallWith<Modifier>
+): @Composable RunIn<ColumnScope> = {
 	controls(LayoutGravity.Center)
 	if (text.isNotEmpty()) {
-		Spacer(LayoutHeight(12.dp))
-		Text(text = text, modifier = LayoutGravity.Center)
+		Text(
+			text = text,
+			modifier = LayoutGravity.Center + LayoutPadding(top = 12.dp)
+		)
 	}
 }
 
-fun Input(count: Int, doIt: Procedure): @Composable Sink<Modifier> = {
+fun Input(count: Int, doIt: Procedure): @Composable CallWith<Modifier> = {
 	val details = if (count == 0) "" else " ($count)"
+	EditControl(modifier = it)
 	Button(
 		text = "do it.$details",
 		modifier = it,

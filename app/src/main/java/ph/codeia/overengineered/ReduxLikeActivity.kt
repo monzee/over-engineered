@@ -20,7 +20,7 @@ import androidx.ui.tooling.preview.Preview
 import androidx.ui.unit.dp
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-import ph.codeia.overengineered.controls.InContext
+import ph.codeia.overengineered.controls.RunIn
 import kotlin.random.Random
 
 class ReduxLikeActivity : AppCompatActivity() {
@@ -54,7 +54,7 @@ fun preview() {
 
 @Composable
 inline fun Chrome(
-	crossinline children: @Composable InContext<ColumnScope>
+	crossinline children: @Composable RunIn<ColumnScope>
 ) {
 	Scaffold {
 		Column(

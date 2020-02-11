@@ -76,13 +76,13 @@ fun <T: Any> MutableLiveData<SingleUse<T>>.postValue(value: T?) {
 @Model
 class StateMachine<S: Any, E>(
 	initial: S,
-	private val accumulate: (S, E) -> S?
+	private val transition: (S, E) -> S?
 ) {
 	var value: S = initial
 		private set
 
 	fun dispatch(event: E) {
-		accumulate(value, event)?.let {
+		transition(value, event)?.let {
 			value = it
 		}
 	}
@@ -93,7 +93,10 @@ class StateMachine<S: Any, E>(
 
 
 @Composable
-fun <S: Any, E> scan(initial: S, accumulate: (S, E) -> S?) = remember {
+fun <S: Any, E> scan(
+	initial: S,
+	accumulate: (S, E) -> S?
+): StateMachine<S, E> = remember {
 	StateMachine(initial, accumulate)
 }
 
@@ -103,6 +106,6 @@ fun <S: Any, E> scan(initial: S, accumulate: (S, E) -> S?) = remember {
 inline fun <S: Any, E> scan(
 	initial: S,
 	crossinline accumulate: (E, S) -> S?
-) = remember {
-	StateMachine(initial) { state, event: E -> accumulate(event, state) }
+): StateMachine<S, E> = run {
+	scan(initial) { state, event: E -> accumulate(event, state) }
 }

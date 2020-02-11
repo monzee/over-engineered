@@ -12,7 +12,7 @@ import androidx.ui.material.MaterialTheme
 import androidx.ui.tooling.preview.Preview
 import ph.codeia.overengineered.controls.EditControl
 import ph.codeia.overengineered.controls.FieldType
-import ph.codeia.overengineered.controls.Sizes
+import ph.codeia.overengineered.controls.Metrics
 import ph.codeia.overengineered.liveComposable
 import javax.inject.Inject
 
@@ -47,7 +47,7 @@ class LoginSegment @Inject constructor(private val model: LoginModel) {
 		}
 
 		val typography = MaterialTheme.typography()
-		val size = ambient(Sizes)
+		val size = ambient(Metrics.Handle)
 		val focus = ambient(FocusManagerAmbient)
 		CurrentTextStyleProvider(typography.h6) {
 			Column {
