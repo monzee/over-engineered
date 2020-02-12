@@ -13,7 +13,10 @@ import androidx.ui.layout.*
 import androidx.ui.material.Button
 import androidx.ui.material.MaterialTheme
 import androidx.ui.unit.dp
-import ph.codeia.overengineered.controls.*
+import ph.codeia.overengineered.controls.CallWith
+import ph.codeia.overengineered.controls.EditControl
+import ph.codeia.overengineered.controls.Procedure
+import ph.codeia.overengineered.controls.RunIn
 
 class CurriedComponentsActivity : AppCompatActivity() {
 	override fun onCreate(savedInstanceState: Bundle?) {
@@ -51,10 +54,16 @@ fun Body(
 }
 
 fun Input(count: Int, doIt: Procedure): @Composable CallWith<Modifier> = {
-	val details = if (count == 0) "" else " ($count)"
-	EditControl(modifier = it)
+	val message =
+		if (count == 0) ""
+		else "clicked $count time${if (count == 1) "" else "s"}"
+	EditControl(
+		hint = "Something goes here.",
+		error = message,
+		modifier = it
+	)
 	Button(
-		text = "do it.$details",
+		text = "do it.",
 		modifier = it,
 		onClick = doIt
 	)
