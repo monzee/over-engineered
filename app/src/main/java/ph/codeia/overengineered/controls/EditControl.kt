@@ -3,9 +3,12 @@ package ph.codeia.overengineered.controls
 import androidx.compose.Composable
 import androidx.compose.Model
 import androidx.lifecycle.LiveData
+import androidx.lifecycle.MutableLiveData
 import androidx.ui.core.Modifier
 import androidx.ui.input.ImeAction
-import ph.codeia.overengineered.liveComposable
+import ph.codeia.overengineered.Consumable
+import ph.codeia.overengineered.SingleUse
+import ph.codeia.overengineered.plusAssign
 
 /*
  * This file is a part of the Over Engineered project.
@@ -25,6 +28,9 @@ class EditControl(
 		class Change(val value: String) : Event()
 	}
 
+	private val _events = MutableLiveData<SingleUse<Event>>()
+	val events: Consumable<Event> = _events
+
 	@Composable
 	fun render(
 		fieldType: EditText.Type = EditText.Plain,
@@ -32,7 +38,7 @@ class EditControl(
 		hint: String? = null,
 		imeAction: ImeAction = ImeAction.Unspecified,
 		modifier: Modifier = Modifier.None
-	): LiveData<Event> = liveComposable {
+	) {
 		EditText(
 			error = error,
 			fieldType = fieldType,
@@ -41,12 +47,12 @@ class EditControl(
 			imeAction = imeAction,
 			isEnabled = isEnabled,
 			modifier = modifier,
-			onBlur = { +Event.Blur },
-			onFocus = { +Event.Focus },
-			onImeAction = { +Event.InputMethod(it) },
+			onBlur = { _events += Event.Blur },
+			onFocus = { _events += Event.Focus },
+			onImeAction = { _events += Event.InputMethod(it) },
 			onValueChange = {
 				value = it
-				+Event.Change(it)
+				_events += Event.Change(it)
 			},
 			value = value
 		)

@@ -1,8 +1,6 @@
 package ph.codeia.overengineered
 
-import androidx.compose.Composable
-import androidx.compose.Model
-import androidx.compose.remember
+import androidx.compose.*
 import androidx.lifecycle.*
 
 /*
@@ -38,8 +36,9 @@ inline fun <T> liveComposable(
 
 class SingleUse<out T: Any>(val value: T)
 
+typealias Consumable<T> = LiveData<SingleUse<T>>
 
-inline fun <T: Any> LiveData<SingleUse<T>>.consume(
+inline fun <T: Any> Consumable<T>.consume(
 	owner: LifecycleOwner?,
 	crossinline consumer: (T) -> Unit
 ) : Observer<SingleUse<T>> = let { live ->
@@ -61,6 +60,11 @@ var <T: Any> MutableLiveData<SingleUse<T>>.unwrapped: T?
 	set(value) {
 		setValue(value?.let(::SingleUse))
 	}
+
+
+operator fun <T: Any> MutableLiveData<SingleUse<T>>.plusAssign(value: T) {
+	unwrapped = value
+}
 
 
 fun <T: Any> MutableLiveData<SingleUse<T>>.setValue(value: T?) {

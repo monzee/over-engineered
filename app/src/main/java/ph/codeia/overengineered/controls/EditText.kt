@@ -123,7 +123,7 @@ object EditText {
 		val colors = MaterialTheme.colors()
 		val textColor = textStyle.color ?: colors.onSurface
 		val hintColor = textColor.copy(alpha = 0.5f)
-		val smallFontSize = textStyle.fontSize * 2 / 3f
+		val smallFontSize = textStyle.fontSize * 3 / 4f
 		val reservedVerticalSpace = remember(density, smallFontSize, absolute) {
 			withDensity(density) {
 				val height = smallFontSize.toDp() + absolute.half
