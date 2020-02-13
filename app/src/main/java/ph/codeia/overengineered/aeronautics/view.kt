@@ -10,8 +10,7 @@ import androidx.ui.layout.LayoutHeight
 import androidx.ui.layout.Spacer
 import androidx.ui.material.MaterialTheme
 import androidx.ui.tooling.preview.Preview
-import ph.codeia.overengineered.controls.EditControl
-import ph.codeia.overengineered.controls.FieldType
+import ph.codeia.overengineered.controls.EditText
 import ph.codeia.overengineered.controls.Metrics
 import ph.codeia.overengineered.liveComposable
 import javax.inject.Inject
@@ -51,7 +50,7 @@ class LoginSegment @Inject constructor(private val model: LoginModel) {
 		val focus = ambient(FocusManagerAmbient)
 		CurrentTextStyleProvider(typography.h6) {
 			Column {
-				EditControl(
+				EditText(
 					error = usernameError,
 					imeAction = ImeAction.Next,
 					onImeAction = { focus.requestFocusById("password") },
@@ -59,9 +58,9 @@ class LoginSegment @Inject constructor(private val model: LoginModel) {
 					value = credentials.username
 				)
 				Spacer(LayoutHeight(size.unit))
-				EditControl(
+				EditText(
 					error = passwordError,
-					fieldType = FieldType.Password,
+					fieldType = EditText.Password,
 					focusIdentifier = "password",
 					imeAction = ImeAction.Done,
 					onImeAction = { +Action.Submit },

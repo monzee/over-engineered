@@ -84,22 +84,3 @@ class DebugOutline(private val color: Color) : DrawModifier {
 		}
 	}
 }
-
-class TranslateY(
-	private val byHeight: Float = 0f,
-	private val offset: Float = 0f
-) : DrawModifier {
-	override fun draw(
-		density: Density,
-		drawContent: () -> Unit,
-		canvas: Canvas,
-		size: PxSize
-	) {
-		if (byHeight != 0f || offset != 0f) {
-			val dy = byHeight * size.height.value + offset
-			canvas.translate(0f, dy)
-			drawContent()
-			canvas.translate(0f, -dy)
-		}
-	}
-}

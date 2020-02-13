@@ -5,6 +5,7 @@ import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
 import androidx.compose.Composable
 import androidx.compose.mutableStateOf
+import androidx.compose.remember
 import androidx.lifecycle.ViewModel
 import androidx.ui.core.Modifier
 import androidx.ui.core.Text
@@ -53,18 +54,18 @@ fun Body(
 	}
 }
 
-fun Input(count: Int, doIt: Procedure): @Composable CallWith<Modifier> = {
-	val message =
-		if (count == 0) ""
-		else "clicked $count time${if (count == 1) "" else "s"}"
-	EditControl(
+fun Input(count: Int, doIt: Procedure): @Composable CallWith<Modifier> = { modifier ->
+	val edit = remember { EditControl() }
+	edit.error = count.takeIf { it > 0 }?.let {
+		"clicked $it time${if (it == 1) "" else "s"}"
+	}
+	edit.render(
 		hint = "Something goes here.",
-		error = message,
-		modifier = it
+		modifier = modifier
 	)
 	Button(
-		text = "do it.",
-		modifier = it,
+		text = "do modifier.",
+		modifier = modifier,
 		onClick = doIt
 	)
 }
