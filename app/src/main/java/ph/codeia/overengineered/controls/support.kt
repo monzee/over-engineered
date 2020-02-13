@@ -1,7 +1,6 @@
 package ph.codeia.overengineered.controls
 
-import androidx.compose.Ambient
-import androidx.compose.Composable
+import androidx.compose.*
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MediatorLiveData
 import androidx.ui.core.DrawModifier
@@ -10,6 +9,7 @@ import androidx.ui.graphics.Color
 import androidx.ui.graphics.Paint
 import androidx.ui.graphics.PaintingStyle
 import androidx.ui.unit.*
+import kotlin.reflect.KProperty
 
 /*
  * This file is a part of the Over Engineered project.
@@ -84,3 +84,8 @@ class DebugOutline(private val color: Color) : DrawModifier {
 		}
 	}
 }
+
+fun <T> MutableState<T?>.consume(): T? = value.also {
+	value = null
+}
+

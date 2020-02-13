@@ -1,5 +1,3 @@
-@file:Suppress("MemberVisibilityCanBePrivate")
-
 package ph.codeia.overengineered
 
 import android.os.Bundle
@@ -22,10 +20,7 @@ import androidx.ui.layout.LayoutPadding
 import androidx.ui.material.MaterialTheme
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-import ph.codeia.overengineered.controls.ButtonControl
-import ph.codeia.overengineered.controls.EditControl
-import ph.codeia.overengineered.controls.EditText
-import ph.codeia.overengineered.controls.Metrics
+import ph.codeia.overengineered.controls.*
 import kotlin.random.Random
 
 /*
@@ -36,89 +31,40 @@ import kotlin.random.Random
 class ViewModelCentricActivity : AppCompatActivity() {
 	override fun onCreate(savedInstanceState: Bundle?) {
 		super.onCreate(savedInstanceState)
-		val screen: LoginScreen by viewModels()
+		val screen: DirectControlStateAccess by viewModels()
 		setContent {
 			screen.render(this)
-			remember(screen.toast) {
-				screen.takeToast()?.let {
-					Toast.makeText(this, it, Toast.LENGTH_SHORT).show()
-				}
+			screen.toasts?.let {
+				Toast.makeText(this, it, Toast.LENGTH_SHORT).show()
 			}
 		}
 	}
 }
 
 
-class LoginScreen : ViewModel() {
-	val username = EditControl()
-	val password = EditControl()
-	val submit = ButtonControl()
-	var toast: String? by mutableStateOf(null)
-		private set
-	var isActive by mutableStateOf(false)
-		private set
-	var isBusy by mutableStateOf(false)
-		private set
-	var validationResult by mutableStateOf(ValidationResult.Valid)
-		private set
+class DirectControlStateAccess : ViewModel() {
+	private val username = EditControl()
+	private val password = EditControl()
+	private val submit = ButtonControl()
+	private val toast = mutableStateOf<String?>("hello!")
+	private var isActive by mutableStateOf(false)
+	private var isBusy by mutableStateOf(false)
+	private var validationResult by mutableStateOf(Valid, StructurallyEqual)
 
-	private val emailPattern = PatternsCompat.EMAIL_ADDRESS.toRegex()
+	private companion object {
+		val EmailPattern = PatternsCompat.EMAIL_ADDRESS.toRegex()
+		val Valid = ValidationResult(null, null)
+	}
 
-	data class ValidationResult(
+	private data class ValidationResult(
 		val username: String?,
 		val password: String?
 	) {
 		val isValid = username == null && password == null
-
-		companion object {
-			val Valid = ValidationResult(null, null)
-		}
 	}
 
-	fun takeToast(): String? = toast.also {
-		toast = null
-	}
-
-	fun validate() {
-		validationResult = ValidationResult(
-			username = when {
-				username.value.isEmpty() -> "required"
-				!emailPattern.matches(username.value) -> "bad email format"
-				else -> null
-			},
-			password = when {
-				password.value.isEmpty() -> "required"
-				password.value.length < 5 -> "too simple"
-				else -> null
-			}
-		)
-		isActive = true
-	}
-
-	fun submit() {
-		if (!isActive) {
-			validate()
-		}
-		if (validationResult.isValid) {
-			isBusy = true
-			viewModelScope.launch {
-				delay(2000)
-				toast = try {
-					when (Random.nextInt(4)) {
-						0 -> error("bad username or password")
-						1 -> error("unavailable")
-						2 -> if (Random.nextInt(25) == 0) error("unlucky")
-					}
-					"congrats!"
-				} catch (ex: Exception) {
-					"FAIL! ${ex.message}"
-				} finally {
-					isBusy = false
-					validate()
-				}
-			}
-		}
-	}
+	val toasts: String?
+		get() = toast.consume()
 
 	@Composable
 	fun render(lifetime: LifecycleOwner) {
@@ -169,6 +115,49 @@ class LoginScreen : ViewModel() {
 						modifier = LayoutGravity.Center,
 						text = "LOGIN"
 					)
+				}
+			}
+		}
+	}
+
+	private fun validate() {
+		validationResult = ValidationResult(
+			username = when {
+				username.value.isEmpty() -> "required"
+				!EmailPattern.matches(username.value) -> "bad email format"
+				else -> null
+			},
+			password = when {
+				password.value.isEmpty() -> "required"
+				password.value.length < 5 -> "too simple"
+				else -> null
+			}
+		)
+		isActive = true
+	}
+
+	private fun submit() {
+		if (!isActive) {
+			validate()
+		}
+		if (validationResult.isValid) {
+			isBusy = true
+			viewModelScope.launch {
+				delay(2000)
+				toast.value = try {
+					when (Random.nextInt(4)) {
+						0 -> error("bad username or password")
+						1 -> error("unavailable")
+						2 -> if (Random.nextInt(25) == 0) error("unlucky")
+					}
+					"congrats!"
+				}
+				catch (ex: Exception) {
+					"FAIL! ${ex.message}"
+				}
+				finally {
+					isBusy = false
+					validate()
 				}
 			}
 		}
