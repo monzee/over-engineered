@@ -8,7 +8,9 @@ import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
 import androidx.compose.*
 import androidx.core.util.PatternsCompat
-import androidx.lifecycle.*
+import androidx.lifecycle.LifecycleOwner
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
 import androidx.ui.core.CurrentTextStyleProvider
 import androidx.ui.core.FocusManagerAmbient
 import androidx.ui.core.setContent
@@ -18,7 +20,6 @@ import androidx.ui.layout.Column
 import androidx.ui.layout.LayoutGravity
 import androidx.ui.layout.LayoutPadding
 import androidx.ui.material.MaterialTheme
-import androidx.ui.tooling.preview.Preview
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import ph.codeia.overengineered.controls.ButtonControl
@@ -36,26 +37,15 @@ class ViewModelCentricActivity : AppCompatActivity() {
 	override fun onCreate(savedInstanceState: Bundle?) {
 		super.onCreate(savedInstanceState)
 		val screen: LoginScreen by viewModels()
-		screen.messages.consume(this) {
-			Toast.makeText(this, it, Toast.LENGTH_SHORT).show()
-		}
 		setContent {
 			screen.render(this)
+			remember(screen.toast) {
+				screen.takeToast()?.let {
+					Toast.makeText(this, it, Toast.LENGTH_SHORT).show()
+				}
+			}
 		}
 	}
-}
-
-@[Composable Preview]
-fun loginScreenPreview() {
-	val owner = object : LifecycleOwner {
-		override fun getLifecycle(): Lifecycle = run {
-			LifecycleRegistry(this)
-		}
-	}
-	val screen = LoginScreen()
-	screen.setUsername("lorem ipsum dolor sit amet")
-	screen.submit()
-	screen.render(owner)
 }
 
 
@@ -63,91 +53,68 @@ class LoginScreen : ViewModel() {
 	val username = EditControl()
 	val password = EditControl()
 	val submit = ButtonControl()
-	private val _messages = MutableLiveData<SingleUse<String>>()
-	val messages: Consumable<String> = _messages
-
-	private sealed class Tag {
-		object Idle : Tag()
-		object Busy : Tag()
-		class Active(
-			val usernameError: String?,
-			val passwordError: String?
-		) : Tag() {
-			val isValid = usernameError == null && passwordError == null
-		}
-		class Failed(val cause: Throwable) : Tag()
-		class LoggedIn(val token: String) : Tag()
-	}
-
-	private class State(
-		var username: String,
-		var password: String,
-		tag: Tag
-	) {
-		var tag: Tag by mutableStateOf(tag)
-	}
+	var toast: String? by mutableStateOf(null)
+		private set
+	var isActive by mutableStateOf(false)
+		private set
+	var isBusy by mutableStateOf(false)
+		private set
+	var validationResult by mutableStateOf(ValidationResult.Valid)
+		private set
 
 	private val emailPattern = PatternsCompat.EMAIL_ADDRESS.toRegex()
-	private val state = State("", "", Tag.Idle)
 
-	fun setUsername(value: String) {
-		state.username = value
-		validateIfActive()
-	}
+	data class ValidationResult(
+		val username: String?,
+		val password: String?
+	) {
+		val isValid = username == null && password == null
 
-	fun setPassword(value: String) {
-		state.password = value
-		validateIfActive()
-	}
-
-	private fun validateIfActive() {
-		if (state.tag is Tag.Active) {
-			validate()
+		companion object {
+			val Valid = ValidationResult(null, null)
 		}
+	}
+
+	fun takeToast(): String? = toast.also {
+		toast = null
 	}
 
 	fun validate() {
-		val username = state.username
-		val password = state.password
-		val usernameError = when {
-			username.isBlank() -> "required"
-			!emailPattern.matches(username) -> "bad email format"
-			else -> null
-		}
-		val passwordError = when {
-			password.isBlank() -> "required"
-			password.length < 5 -> "too simple"
-			else -> null
-		}
-		state.tag = Tag.Active(usernameError, passwordError)
+		validationResult = ValidationResult(
+			username = when {
+				username.value.isEmpty() -> "required"
+				!emailPattern.matches(username.value) -> "bad email format"
+				else -> null
+			},
+			password = when {
+				password.value.isEmpty() -> "required"
+				password.value.length < 5 -> "too simple"
+				else -> null
+			}
+		)
+		isActive = true
 	}
 
 	fun submit() {
-		when (val tag = state.tag) {
-			Tag.Idle -> {
-				validate()
-				submit()
-			}
-			is Tag.Active -> {
-				if (tag.isValid) {
-					state.tag = Tag.Busy
-					viewModelScope.launch {
-						delay(2000)
-						state.tag = try {
-							when (Random.nextInt(4)) {
-								0 -> error("bad username or password")
-								1 -> error("unavailable")
-								2 -> when (Random.nextInt(25)) {
-									0 -> error("unlucky")
-									else -> Tag.LoggedIn("congrats")
-								}
-								else -> Tag.LoggedIn("congrats")
-							}
-						}
-						catch (ex: Throwable) {
-							Tag.Failed(ex)
-						}
+		if (!isActive) {
+			validate()
+		}
+		if (validationResult.isValid) {
+			isBusy = true
+			viewModelScope.launch {
+				delay(2000)
+				toast = try {
+					when (Random.nextInt(4)) {
+						0 -> error("bad username or password")
+						1 -> error("unavailable")
+						2 -> if (Random.nextInt(25) == 0) error("unlucky")
 					}
+					"congrats!"
+				} catch (ex: Exception) {
+					"FAIL! ${ex.message}"
+				} finally {
+					isBusy = false
+					validate()
 				}
 			}
 		}
@@ -161,14 +128,14 @@ class LoginScreen : ViewModel() {
 		onActive {
 			username.events.consume(lifetime) {
 				when (it) {
-					is EditControl.Event.Change -> setUsername(it.value)
+					is EditControl.Event.Change -> if (isActive) validate()
 					is EditControl.Event.InputMethod ->
 						focus.requestFocusById("password")
 				}
 			}
 			password.events.consume(lifetime) {
 				when (it) {
-					is EditControl.Event.Change -> setPassword(it.value)
+					is EditControl.Event.Change -> if (isActive) validate()
 					is EditControl.Event.InputMethod -> submit()
 				}
 			}
@@ -177,29 +144,9 @@ class LoginScreen : ViewModel() {
 			}
 		}
 
-		remember(state.tag) {
-			username.value = state.username
-			password.value = state.password
-			when (val tag = state.tag) {
-				Tag.Idle -> {
-					_messages += "hello!"
-				}
-				Tag.Busy -> submit.isEnabled = false
-				is Tag.Active -> {
-					username.error = tag.usernameError
-					password.error = tag.passwordError
-					submit.isEnabled = tag.isValid
-				}
-				is Tag.Failed -> {
-					_messages += "FAIL! ${tag.cause.message}"
-					validate()
-				}
-				is Tag.LoggedIn -> {
-					_messages += tag.token
-					validate()
-				}
-			}
-		}
+		username.error = validationResult.username
+		password.error = validationResult.password
+		submit.isEnabled = !isBusy && validationResult.isValid
 
 		MaterialTheme {
 			Column(
@@ -212,14 +159,12 @@ class LoginScreen : ViewModel() {
 						hint = "Username",
 						imeAction = ImeAction.Next
 					)
-
 					password.render(
 						fieldType = EditText.Password,
 						focusIdentifier = "password",
 						hint = "Password",
 						imeAction = ImeAction.Done
 					)
-
 					submit.render(
 						modifier = LayoutGravity.Center,
 						text = "LOGIN"
