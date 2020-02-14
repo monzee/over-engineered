@@ -1,23 +1,23 @@
 package ph.codeia.overengineered.controls
 
-import androidx.compose.Composable
-import androidx.compose.ambient
-import androidx.compose.onPreCommit
-import androidx.compose.remember
+import androidx.compose.*
 import androidx.ui.core.*
+import androidx.ui.foundation.Clickable
 import androidx.ui.foundation.shape.corner.RoundedCornerShape
 import androidx.ui.graphics.Color
 import androidx.ui.graphics.SolidColor
+import androidx.ui.graphics.vector.DrawVector
 import androidx.ui.input.ImeAction
 import androidx.ui.input.KeyboardType
-import androidx.ui.layout.LayoutGravity
-import androidx.ui.layout.LayoutPadding
-import androidx.ui.layout.Padding
-import androidx.ui.layout.Stack
+import androidx.ui.layout.*
 import androidx.ui.material.MaterialTheme
+import androidx.ui.material.ripple.Ripple
 import androidx.ui.material.surface.Surface
+import androidx.ui.res.LoadedResource
+import androidx.ui.res.loadVectorResource
 import androidx.ui.unit.dp
 import androidx.ui.unit.withDensity
+import ph.codeia.overengineered.R
 import ph.codeia.overengineered.StateMachine
 
 /*
@@ -47,13 +47,12 @@ object EditText {
 		class Selecting(s: State) : Activity(s)
 	}
 
-	private sealed class Action {
-		object Blur : Action()
-		object Conceal : Action()
-		object Drag : Action()
-		object Release : Action()
-		object Reveal : Action()
-		object Tap : Action()
+	private enum class Tag {
+		Blurred, Disabled, Focused, HeldDown, Selecting
+	}
+
+	private enum class Action {
+		Blur, Conceal, Reveal, Tap
 	}
 
 	private fun transition(
@@ -61,16 +60,17 @@ object EditText {
 		event: Action
 	): Activity? = when (event) {
 		Action.Blur -> Activity.Blurred(current.state)
-		Action.Conceal -> TODO()
-		Action.Drag -> TODO()
-		Action.Release -> TODO()
-		Action.Reveal -> TODO()
-		Action.Tap -> when (current) {
-			is Activity.Blurred -> Activity.Focused(current.state)
-			is Activity.Focused -> Activity.Selecting(current.state)
-			is Activity.HeldDown -> Activity.Focused(current.state)
-			else -> null
+		Action.Conceal -> {
+			current.state.isSecret = true
+			current
 		}
+		Action.Reveal -> {
+			current.state.isSecret = false
+			current
+		}
+		Action.Tap ->
+			if (current is Activity.Blurred) Activity.Focused(current.state)
+			else null
 	}
 
 	private fun machine(state: State) = run {
@@ -85,8 +85,11 @@ object EditText {
 		var isEmpty: Boolean,
 		var isEnabled: Boolean,
 		var isSecret: Boolean,
-		var isValid: Boolean
-	)
+		var isValid: Boolean,
+		tag: Tag = Tag.Blurred
+	) {
+		var tag by mutableStateOf(tag)
+	}
 
 	@Composable
 	operator fun invoke(
@@ -124,6 +127,8 @@ object EditText {
 		val textColor = textStyle.color ?: colors.onSurface
 		val hintColor = textColor.copy(alpha = 0.5f)
 		val smallFontSize = textStyle.fontSize * 3 / 4f
+		val reveal = loadVectorResource(R.drawable.reveal)
+		val conceal = loadVectorResource(R.drawable.conceal)
 		val reservedVerticalSpace = remember(density, smallFontSize, absolute) {
 			withDensity(density) {
 				val height = smallFontSize.toDp() + absolute.half
@@ -168,7 +173,14 @@ object EditText {
 				modifier = LayoutGravity.Center + reservedVerticalSpace,
 				shape = RoundedCornerShape(absolute.tiny)
 			) {
-				Padding(absolute.half) {
+				Padding(
+					bottom = absolute.half,
+					left = absolute.half,
+					right = absolute.half +
+						if (state.isSecret) 24.dp
+						else 0.dp,
+					top = absolute.half
+				) {
 					if (state.isSecret) PasswordTextField(
 						// missing `keyboard` and `modifier` params!
 						focusIdentifier = focusIdentifier,
@@ -223,6 +235,36 @@ object EditText {
 					style = hintStyle.copy(fontSize = smallFontSize),
 					text = it
 				)
+			}
+			if (fieldType is Type.Password) {
+				val toggle = if (state.isSecret) reveal else conceal
+				(toggle.resource as? LoadedResource)?.let {
+					it.resource?.let { res ->
+						Ripple(bounded = false) {
+							Clickable(
+								onClick = {
+									val action =
+										if (state.isSecret) Action.Reveal
+										else Action.Conceal
+									on(action)
+								},
+								consumeDownOnStart = false
+							) {
+								Container(
+									height = absolute.double,
+									modifier = LayoutGravity.CenterRight +
+										LayoutPadding(right = absolute.half),
+									width = absolute.double
+								) {
+									DrawVector(
+										tintColor = contentColor,
+										vectorImage = res
+									)
+								}
+							}
+						}
+					}
+				}
 			}
 			error.takeUnless { state.isValid }?.let {
 				Text(

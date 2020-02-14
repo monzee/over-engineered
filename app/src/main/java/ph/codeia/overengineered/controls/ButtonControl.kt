@@ -5,7 +5,6 @@ import androidx.compose.Model
 import androidx.lifecycle.MutableLiveData
 import androidx.ui.core.Modifier
 import androidx.ui.core.Opacity
-import androidx.ui.layout.Stack
 import androidx.ui.material.Button
 import androidx.ui.material.ButtonStyle
 import androidx.ui.material.ContainedButtonStyle
@@ -25,6 +24,10 @@ class ButtonControl(var isEnabled: Boolean = true) {
 	private val _events = MutableLiveData<SingleUse<Event>>()
 	val events: Consumable<Event> = _events
 
+	private val onClick: Procedure = {
+		_events += Event
+	}
+
 	@Composable
 	fun render(
 		text: String,
@@ -34,7 +37,7 @@ class ButtonControl(var isEnabled: Boolean = true) {
 		Opacity(if (isEnabled) 1f else 0.5f) {
 			Button(
 				modifier = modifier,
-				onClick = { if (isEnabled) _events += Event },
+				onClick = if (isEnabled) onClick else null,
 				style = style,
 				text = text
 			)
@@ -51,7 +54,7 @@ class ButtonControl(var isEnabled: Boolean = true) {
 			Button(
 				children = children,
 				modifier = modifier,
-				onClick = { if (isEnabled) _events += Event },
+				onClick = if (isEnabled) onClick else null,
 				style = style
 			)
 		}
