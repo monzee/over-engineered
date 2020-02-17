@@ -2,108 +2,68 @@ package ph.codeia.overengineered.login.mvi
 
 import androidx.compose.State
 import androidx.compose.mutableStateOf
-import androidx.core.util.PatternsCompat
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.Module
 import dagger.Provides
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.launch
+import ph.codeia.overengineered.collect
 import ph.codeia.overengineered.controls.CallWith
-import kotlin.random.Random
 
 @Module
 class LoginViewModel(private val savedState: SavedStateHandle) : ViewModel() {
-	private val state = mutableStateOf(InitialState)
+	private val state = mutableStateOf(from(savedState))
 
 	@get:Provides
-	val readOnlyState: State<LoginState> = state
+	val readOnlyState: State<LoginModel> = state
+
+	@get:Provides
+	val adapter: LoginAdapter = FakeLoginService
 
 	@Provides
-	fun controller(): CallWith<@JvmSuppressWildcards LoginAction> = { action ->
+	fun controller(
+		adapter: LoginAdapter
+	): CallWith<@JvmSuppressWildcards LoginAction> = { action ->
 		val (current, next) = state
-		when (action) {
-			is SetUsername -> next(current.copy(username = action.value).let {
-				when (it.tag) {
-					is Active -> it.validate()
-					else -> it
-				}
-			})
-			is SetPassword -> next(current.copy(password = action.value).let {
-				when (it.tag) {
-					is Active -> it.validate()
-					else -> it
-				}
-			})
-			Submit -> submit()
-		}
-	}
-
-	private fun submit() {
-		val (current, next) = state
-		val tag = when (current.tag) {
-			Busy -> return
-			!is Active -> validate(current)
-			else -> current.tag
-		}
-		if (!tag.errors.isValid) next(current.copy(tag = tag))
-		else {
-			next(current.copy(tag = Busy))
-			viewModelScope.launch {
-				delay(2000)
-				try {
-					when (Random.nextInt(4)) {
-						0 -> error("wrong username or password")
-						1 -> error("service unavailable")
-						2 -> if (Random.nextInt(25) == 0) error("unlucky")
-					}
-					finish("congrats")
-				} catch (ex: Exception) {
-					finish(ex)
-				}
+		with(adapter) {
+			when (action) {
+				is SetUsername -> next(current.setUsername(action.value))
+				is SetPassword -> next(current.setPassword(action.value))
+				Submit -> viewModelScope.collect(current.submit(state::value), next)
 			}
 		}
 	}
 
-	private fun finish(token: String) {
-		val (current, next) = state
-		next(current.copy(tag = Done {
-			next(current.validate())
-			token
-		}))
+	override fun onCleared() {
+		super.onCleared()
+		val model = state.value
+		val errors = model.tag as? Validated
+		savedState[IsIdle] = model.tag == Idle
+		savedState[Username] = model.username
+		savedState[Password] = model.password
+		savedState[UsernameError] = errors?.username
+		savedState[PasswordError] = errors?.password
 	}
-
-	private fun finish(cause: Throwable) {
-		val (current, next) = state
-		next(current.copy(tag = Failed {
-			next(current.validate())
-			cause
-		}))
-	}
-
-	private fun LoginState.validate() = let {
-		it.copy(tag = validate(it))
-	}
-
-	private fun validate(state: LoginState) = Active(
-		ValidationResult(
-			when {
-				state.username.isEmpty() -> Required
-				!EmailRegex.matches(state.username) -> "bad email address format"
-				else -> null
-			},
-			when {
-				state.password.isEmpty() -> Required
-				state.password.length < 5 -> "too simple"
-				else -> null
-			}
-		)
-	)
 
 	private companion object {
-		const val Required = "required"
-		val EmailRegex = PatternsCompat.EMAIL_ADDRESS.toRegex()
-		val InitialState = LoginState("", "", Idle)
+		const val IsIdle = "isIdle"
+		const val Username = "username"
+		const val Password = "password"
+		const val UsernameError = "usernameError"
+		const val PasswordError = "passwordError"
+
+		// why am i forced to specify the type params here? shouldn't they be
+		// inferrable from the use site?
+		fun from(savedState: SavedStateHandle) = run {
+			val isIdle = savedState.get<Boolean>(IsIdle) ?: true
+			LoginModel(
+				savedState.get<String>(Username) ?: "",
+				savedState.get<String>(Password) ?: "",
+				if (isIdle) Idle else Validated(
+					savedState.get<String>(UsernameError),
+					savedState.get<String>(PasswordError)
+				)
+			)
+		}
 	}
 }

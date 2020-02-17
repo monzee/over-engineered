@@ -1,7 +1,11 @@
 package ph.codeia.overengineered
 
-import androidx.compose.*
+import androidx.compose.Composable
+import androidx.compose.Model
+import androidx.compose.remember
 import androidx.lifecycle.*
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.launch
 
 /*
  * This file is a part of the Over Engineered project.
@@ -112,4 +116,48 @@ inline fun <S: Any, E> scan(
 	crossinline accumulate: (E, S) -> S?
 ): StateMachine<S, E> = scan(initial) { state, event: E ->
 	accumulate(event, state)
+}
+
+
+/**
+ * LiveData with completion semantics.
+ *
+ * Makeshift Flow<T> because collecting a flow would cause a compile
+ * error at the moment.
+ */
+typealias Many<T> = CoroutineScope.() -> Collectible<T>
+typealias Collectible<T> = MutableLiveData<Finite<T>>
+
+sealed class Finite<out T> {
+	class Next<T>(val value: T) : Finite<T>()
+	object Done : Finite<Nothing>()
+}
+
+fun <T> Collectible<T>.emit(value: T) {
+	setValue(Finite.Next(value))
+}
+
+fun <T> CoroutineScope.collect(produce: Many<T>, block: (T) -> Unit) {
+	val data = produce()
+	data.observeForever(object : Observer<Finite<T>> {
+		override fun onChanged(next: Finite<T>?) {
+			when (next) {
+				is Finite.Next -> block(next.value)
+				Finite.Done -> data.removeObserver(this)
+			}
+		}
+	})
+}
+
+fun <T> many(
+	block: suspend Collectible<T>.() -> Unit
+): Many<T> = {
+	object : Collectible<T>() {
+		override fun onActive() {
+			launch {
+				block()
+				setValue(Finite.Done)
+			}
+		}
+	}
 }

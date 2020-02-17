@@ -22,7 +22,7 @@ import ph.codeia.overengineered.unwrapped
 import javax.inject.Inject
 
 class LoginForm @Inject constructor(
-	private val state: State<LoginState>,
+	private val state: State<LoginModel>,
 	private val exec: CallWith<@JvmSuppressWildcards LoginAction>
 ) {
 	constructor() : this(Sample, Ignore)
@@ -32,27 +32,27 @@ class LoginForm @Inject constructor(
 
 
 	@Composable
-	fun render() {
-		render(state.value) {
+	fun render(model: LoginModel = state.value) {
+		render(model) {
 			_result.unwrapped = it
 		}
 	}
 
 	@Composable
-	fun render(state: LoginState, onFinish: CallWith<LoginTag>) {
-		if (state.tag is Failed || state.tag is Done) {
-			onFinish(state.tag)
+	fun render(model: LoginModel, onFinish: CallWith<LoginTag>) {
+		if (model.tag is Failed || model.tag is Done) {
+			onFinish(model.tag)
 		}
 
 		Column(
 			arrangement = Arrangement.Center,
 			modifier = LayoutPadding(12.dp)
 		) {
-			val errors = (state.tag as? Active)?.errors
+			val errors = model.tag as? Validated
 			val focus = ambient(FocusManagerAmbient)
-			val isEnabled = when (val tag = state.tag) {
+			val isEnabled = when (val tag = model.tag) {
 				Busy -> false
-				is Active -> tag.errors.isValid
+				is Validated -> tag.isValid
 				else -> true
 			}
 			EditText(
@@ -62,7 +62,7 @@ class LoginForm @Inject constructor(
 				imeAction = ImeAction.Next,
 				onImeAction = { focus.requestFocusById("password") },
 				onValueChange = { exec(SetUsername(it)) },
-				value = state.username
+				value = model.username
 			)
 			EditText(
 				error = errors?.password,
@@ -72,7 +72,7 @@ class LoginForm @Inject constructor(
 				imeAction = ImeAction.Done,
 				onImeAction = { exec(Submit) },
 				onValueChange = { exec(SetPassword(it)) },
-				value = state.password
+				value = model.password
 			)
 			Opacity(if (isEnabled) 1f else 0.4f) {
 				Button(
@@ -84,11 +84,11 @@ class LoginForm @Inject constructor(
 		}
 	}
 
-	private object Sample : State<LoginState> {
-		override val value = LoginState(
+	private object Sample : State<LoginModel> {
+		override val value = LoginModel(
 			username = "foo@example.com",
 			password = "abc",
-			tag = Active(ValidationResult(null, "too simple"))
+			tag = Validated(null, "too simple")
 		)
 	}
 }
