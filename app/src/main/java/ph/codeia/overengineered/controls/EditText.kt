@@ -1,24 +1,27 @@
 package ph.codeia.overengineered.controls
 
-import androidx.compose.*
+import androidx.compose.Composable
+import androidx.compose.ambient
+import androidx.compose.remember
 import androidx.ui.core.*
 import androidx.ui.foundation.Clickable
 import androidx.ui.foundation.shape.corner.RoundedCornerShape
 import androidx.ui.graphics.Color
 import androidx.ui.graphics.SolidColor
 import androidx.ui.graphics.vector.DrawVector
+import androidx.ui.graphics.vector.VectorAsset
 import androidx.ui.input.ImeAction
 import androidx.ui.input.KeyboardType
 import androidx.ui.layout.*
 import androidx.ui.material.MaterialTheme
 import androidx.ui.material.ripple.Ripple
 import androidx.ui.material.surface.Surface
-import androidx.ui.res.LoadedResource
+import androidx.ui.res.DeferredResource
 import androidx.ui.res.loadVectorResource
 import androidx.ui.unit.dp
 import androidx.ui.unit.withDensity
 import ph.codeia.overengineered.R
-import ph.codeia.overengineered.StateMachine
+import ph.codeia.overengineered.scan
 
 /*
  * This file is a part of the Over Engineered project.
@@ -39,56 +42,64 @@ object EditText {
 	val Phone = Type.Plain(KeyboardType.Phone)
 	val Plain = Type.Plain(KeyboardType.Text)
 
-	private sealed class Activity(val state: State) {
-		class Blurred(s: State) : Activity(s)
-		class Disabled(s: State) : Activity(s)
-		class Focused(s: State) : Activity(s)
-		class HeldDown(s: State) : Activity(s)
-		class Selecting(s: State) : Activity(s)
-	}
+	private val InitialState = State(
+		activity = Activity.Blurred,
+		isEmpty = true,
+		isSecret = false,
+		isValid = true
+	)
 
-	private enum class Tag {
-		Blurred, Disabled, Focused, HeldDown, Selecting
-	}
-
-	private enum class Action {
-		Blur, Conceal, Reveal, Tap
-	}
-
-	private fun transition(
-		current: Activity,
-		event: Action
-	): Activity? = when (event) {
-		Action.Blur -> Activity.Blurred(current.state)
-		Action.Conceal -> {
-			current.state.isSecret = true
-			current
-		}
-		Action.Reveal -> {
-			current.state.isSecret = false
-			current
-		}
-		Action.Tap ->
-			if (current is Activity.Blurred) Activity.Focused(current.state)
-			else null
-	}
-
-	private fun machine(state: State) = run {
-		StateMachine(
-			if (state.isEnabled) Activity.Blurred(state)
-			else Activity.Disabled(state),
-			::transition
-		)
-	}
-
-	private class State(
-		var isEmpty: Boolean,
-		var isEnabled: Boolean,
-		var isSecret: Boolean,
-		var isValid: Boolean,
-		tag: Tag = Tag.Blurred
+	private data class State(
+		val activity: Activity,
+		val isEmpty: Boolean,
+		val isSecret: Boolean,
+		val isValid: Boolean
 	) {
-		var tag by mutableStateOf(tag)
+		fun transition(event: Action): State? = when (event) {
+			Action.Blur ->
+				if (activity == Activity.Focused) copy(activity = Activity.Blurred)
+				else null
+			Action.Conceal -> copy(isSecret = true)
+			Action.Reveal -> copy(isSecret = false)
+			is Action.Sync -> copy(
+				activity = event.activity,
+				isEmpty = event.isEmpty,
+				isValid = event.isValid
+			)
+			Action.Tap ->
+				if (activity == Activity.Blurred) copy(activity = Activity.Focused)
+				else null
+		}
+	}
+
+	private enum class Activity {
+		Blurred, Disabled, Focused
+	}
+
+	private sealed class Action {
+		object Blur : Action()
+		object Conceal : Action()
+		object Reveal : Action()
+		class Sync(
+			val activity: Activity,
+			val isEmpty: Boolean,
+			val isValid: Boolean
+		) : Action()
+		object Tap : Action()
+	}
+
+	@Composable
+	private fun sync(
+		activity: Activity,
+		isEmpty: Boolean,
+		isSecret: Boolean,
+		isValid: Boolean
+	) = run {
+		val fsm = scan(InitialState.copy(isSecret = isSecret), State::transition)
+		remember(activity, isEmpty, isValid) {
+			fsm.dispatch(Action.Sync(activity, isEmpty, isValid))
+		}
+		fsm
 	}
 
 	@Composable
@@ -106,23 +117,16 @@ object EditText {
 		onValueChange: CallWith<String> = Ignore,
 		value: String = ""
 	) {
-		val (activity, on) = remember {
-			machine(State(
-				value.isEmpty(),
-				isEnabled,
-				fieldType is Type.Password,
-				error.isNullOrEmpty()
-			))
-		}
-		onPreCommit(value, isEnabled, error) {
-			activity.state.isEmpty = value.isEmpty()
-			activity.state.isEnabled = isEnabled
-			activity.state.isValid = error.isNullOrEmpty()
-		}
+		val (state, on) = sync(
+			if (isEnabled) Activity.Blurred else Activity.Disabled,
+			value.isEmpty(),
+			fieldType is Type.Password,
+			error.isNullOrEmpty()
+		)
+		val activity = state.activity
 		val absolute = ambient(Metrics.Handle)
 		val density = ambientDensity()
 		val textStyle = currentTextStyle()
-		val state = activity.state
 		val colors = MaterialTheme.colors()
 		val textColor = textStyle.color ?: colors.onSurface
 		val hintColor = textColor.copy(alpha = 0.5f)
@@ -135,32 +139,26 @@ object EditText {
 				LayoutPadding(top = height, bottom = height)
 			}
 		}
-		val borderColor = remember(activity, state.isValid, colors) {
+		val borderColor = remember(state, colors) {
 			when (activity) {
-				is Activity.Blurred -> when {
-					!state.isValid -> colors.error.copy(alpha = 0.5f)
-					else -> Color.LightGray
-				}
-				is Activity.Focused -> when {
-					!state.isValid -> colors.error
-					else -> Color.Gray
-				}
+				Activity.Blurred ->
+					if (state.isValid) Color.LightGray
+					else colors.error.copy(alpha = 0.5f)
+				Activity.Focused ->
+					if (state.isValid) Color.Gray
+					else colors.error
 				else -> Color.Transparent
 			}
 		}
 		val contentColor = remember(activity, textColor) {
-			when (activity) {
-				is Activity.Disabled -> textColor.copy(alpha = 0.25f)
-				else -> textColor
-			}
+			if (activity != Activity.Disabled) textColor
+			else textColor.copy(alpha = 0.25f)
 		}
-		val surfaceColor = remember(activity, state.isValid, colors) {
-			when (activity) {
-				is Activity.Disabled -> Color.DarkGray.copy(alpha = 0.25f)
-				else -> when {
-					!state.isValid -> colors.error.copy(alpha = 0.25f)
-					else -> colors.surface
-				}
+		val surfaceColor = remember(state, colors) {
+			when {
+				activity == Activity.Disabled -> Color.DarkGray.copy(alpha = 0.125f)
+				state.isValid -> colors.surface
+				else -> colors.error.copy(alpha = 0.125f)
 			}
 		}
 
@@ -224,7 +222,7 @@ object EditText {
 			}
 			hint.takeUnless { it.isNullOrEmpty() }?.let {
 				val hintStyle = textStyle.copy(color = hintColor)
-				if (activity !is Activity.Focused && state.isEmpty) Text(
+				if (activity != Activity.Focused && state.isEmpty) Text(
 					modifier = LayoutGravity.CenterLeft + LayoutPadding(left = absolute.half),
 					style = hintStyle,
 					text = it
@@ -237,34 +235,15 @@ object EditText {
 				)
 			}
 			if (fieldType is Type.Password) {
-				val toggle = if (state.isSecret) reveal else conceal
-				(toggle.resource as? LoadedResource)?.let {
-					it.resource?.let { res ->
-						Ripple(bounded = false) {
-							Clickable(
-								onClick = {
-									val action =
-										if (state.isSecret) Action.Reveal
-										else Action.Conceal
-									on(action)
-								},
-								consumeDownOnStart = false
-							) {
-								Container(
-									height = absolute.double,
-									modifier = LayoutGravity.CenterRight +
-										LayoutPadding(right = absolute.half),
-									width = absolute.double
-								) {
-									DrawVector(
-										tintColor = contentColor,
-										vectorImage = res
-									)
-								}
-							}
-						}
-					}
-				}
+				val action = if (state.isSecret) Action.Reveal else Action.Conceal
+				val icon = if (state.isSecret) reveal else conceal
+				VisibilitySwitch(
+					absolute = absolute,
+					action = { on(action) },
+					icon = icon,
+					modifier = LayoutGravity.CenterRight,
+					tint = contentColor
+				)
 			}
 			error.takeUnless { state.isValid }?.let {
 				Text(
@@ -273,6 +252,29 @@ object EditText {
 					style = textStyle.copy(color = Color.Red, fontSize = smallFontSize),
 					text = it
 				)
+			}
+		}
+	}
+
+	@Composable
+	private fun VisibilitySwitch(
+		absolute: Metrics,
+		action: Procedure,
+		icon: DeferredResource<VectorAsset>,
+		modifier: Modifier,
+		tint: Color
+	) {
+		icon.resource.resource?.let { res ->
+			Ripple(bounded = false) {
+				Clickable(consumeDownOnStart = false, onClick = action) {
+					Container(
+						height = absolute.double,
+						modifier = modifier + LayoutPadding(right = absolute.half),
+						width = absolute.double
+					) {
+						DrawVector(tintColor = tint, vectorImage = res)
+					}
+				}
 			}
 		}
 	}

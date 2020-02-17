@@ -7,6 +7,7 @@ import androidx.fragment.app.FragmentFactory
 import androidx.lifecycle.SavedStateViewModelFactory
 import androidx.savedstate.SavedStateRegistryOwner
 import dagger.*
+import ph.codeia.overengineered.login.mvi.LoginView as MviLoginView
 import ph.codeia.shiv.Shiv
 import shiv.FragmentBindings
 
@@ -30,6 +31,7 @@ class MainActivity : AppCompatActivity(R.layout.activity_main) {
 interface FragmentComponent {
 	val fragmentFactory: FragmentFactory
 	val loginViewBinder: LoginView.Binder
+	val mviLoginViewBinder: MviLoginView.Binder
 
 	@Component.Factory
 	interface Factory {

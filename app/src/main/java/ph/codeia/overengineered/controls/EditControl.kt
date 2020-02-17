@@ -2,7 +2,6 @@ package ph.codeia.overengineered.controls
 
 import androidx.compose.Composable
 import androidx.compose.Model
-import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.ui.core.Modifier
 import androidx.ui.input.ImeAction
@@ -33,11 +32,11 @@ class EditControl(
 
 	@Composable
 	fun render(
+		modifier: Modifier = Modifier.None,
 		fieldType: EditText.Type = EditText.Plain,
 		focusIdentifier: String? = null,
 		hint: String? = null,
-		imeAction: ImeAction = ImeAction.Unspecified,
-		modifier: Modifier = Modifier.None
+		imeAction: ImeAction = ImeAction.Unspecified
 	) {
 		EditText(
 			error = error,

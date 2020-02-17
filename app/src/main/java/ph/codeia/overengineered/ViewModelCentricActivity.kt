@@ -12,20 +12,12 @@ import androidx.lifecycle.viewModelScope
 import androidx.ui.core.CurrentTextStyleProvider
 import androidx.ui.core.FocusManagerAmbient
 import androidx.ui.core.setContent
-import androidx.ui.foundation.Box
-import androidx.ui.graphics.Color
-import androidx.ui.graphics.vector.DrawVector
-import androidx.ui.graphics.vector.VectorAsset
 import androidx.ui.input.ImeAction
-import androidx.ui.layout.*
+import androidx.ui.layout.Arrangement
+import androidx.ui.layout.Column
+import androidx.ui.layout.LayoutGravity
+import androidx.ui.layout.LayoutPadding
 import androidx.ui.material.MaterialTheme
-import androidx.ui.material.surface.Surface
-import androidx.ui.res.LoadedResource
-import androidx.ui.res.loadVectorResource
-import androidx.ui.res.vectorResource
-import androidx.ui.tooling.preview.Preview
-import androidx.ui.unit.Size
-import androidx.ui.unit.dp
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import ph.codeia.overengineered.controls.*
@@ -45,19 +37,6 @@ class ViewModelCentricActivity : AppCompatActivity() {
 			screen.toasts?.let {
 				Toast.makeText(this, it, Toast.LENGTH_SHORT).show()
 			}
-		}
-	}
-}
-
-@[Composable Preview]
-fun test() {
-	val vector = vectorResource(R.drawable.reveal)
-	Surface {
-		Container(width = 24.dp, height = 24.dp) {
-			DrawVector(
-				vectorImage = vector,
-				tintColor = Color.Red
-			)
 		}
 	}
 }

@@ -1,12 +1,10 @@
-package ph.codeia.overengineered.login
+package ph.codeia.overengineered.login.mvi
 
-import androidx.lifecycle.Observer
 import dagger.Subcomponent
 
 @Subcomponent(modules = [LoginViewModel::class])
 interface LoginView {
-	val input: Observer<LoginAction>
-	val output: LoginControl
+	val output: LoginForm
 
 	@Subcomponent.Factory
 	interface Binder {

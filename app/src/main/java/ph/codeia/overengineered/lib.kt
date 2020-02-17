@@ -110,6 +110,6 @@ fun <S: Any, E> scan(
 inline fun <S: Any, E> scan(
 	initial: S,
 	crossinline accumulate: (E, S) -> S?
-): StateMachine<S, E> = run {
-	scan(initial) { state, event: E -> accumulate(event, state) }
+): StateMachine<S, E> = scan(initial) { state, event: E ->
+	accumulate(event, state)
 }
