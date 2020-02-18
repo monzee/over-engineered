@@ -6,10 +6,9 @@ import ph.codeia.overengineered.emit
 import ph.codeia.overengineered.many
 import javax.inject.Inject
 
-class DefaultAdapter @Inject constructor(
+class ValidateOnFieldChange @Inject constructor(
 	private val service: LoginService
 ) : LoginAdapter {
-
 	override fun LoginModel.setUsername(value: String): LoginModel = run {
 		copy(username = value).let {
 			if (it.tag is Validated) it.validate()

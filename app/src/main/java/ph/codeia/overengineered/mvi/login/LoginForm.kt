@@ -1,8 +1,6 @@
 package ph.codeia.overengineered.mvi.login
 
-import androidx.compose.Composable
-import androidx.compose.State
-import androidx.compose.ambient
+import androidx.compose.*
 import androidx.lifecycle.MutableLiveData
 import androidx.ui.core.FocusManagerAmbient
 import androidx.ui.core.Modifier
@@ -13,40 +11,31 @@ import ph.codeia.overengineered.Consumable
 import ph.codeia.overengineered.SingleUse
 import ph.codeia.overengineered.controls.CallWith
 import ph.codeia.overengineered.controls.EditText
-import ph.codeia.overengineered.controls.Ignore
 import ph.codeia.overengineered.unwrapped
 import javax.inject.Inject
 
 class LoginForm @Inject constructor(
-	private val state: State<LoginModel>,
-	private val exec: CallWith<@JvmSuppressWildcards LoginAction>
+	private val state: State<LoginModel>
 ) {
-	constructor() : this(Sample, Ignore)
+	constructor() : this(Sample)
 
 	private val _result = MutableLiveData<SingleUse<LoginTag>>()
+	/**
+	 * This will only ever hold either [Done] or [Failed].
+	 */
 	val result: Consumable<LoginTag> = _result
-
 
 	@Composable
 	fun render(
 		model: LoginModel = state.value,
-		modifier: Modifier = Modifier.None
-	) {
-		render(model, modifier) {
-			_result.unwrapped = it
-		}
-	}
-
-	@Composable
-	fun render(
-		model: LoginModel,
 		modifier: Modifier = Modifier.None,
-		onFinish: CallWith<LoginTag>
+		onAction: CallWith<LoginAction>
 	) {
-		if (model.tag is Failed || model.tag is Done) {
-			onFinish(model.tag)
+		remember(model) {
+			if (model.tag is Failed || model.tag is Done) {
+				_result.unwrapped = model.tag
+			}
 		}
-
 		val errors = model.tag as? Validated
 		val focus = ambient(FocusManagerAmbient)
 		val isEnabled = when (val tag = model.tag) {
@@ -61,7 +50,7 @@ class LoginForm @Inject constructor(
 			imeAction = ImeAction.Next,
 			modifier = modifier,
 			onImeAction = { focus.requestFocusById("password") },
-			onValueChange = { exec(SetUsername(it)) },
+			onValueChange = { onAction(SetUsername(it)) },
 			value = model.username
 		)
 		EditText(
@@ -71,15 +60,15 @@ class LoginForm @Inject constructor(
 			hint = "Password",
 			imeAction = ImeAction.Done,
 			modifier = modifier,
-			onImeAction = { exec(Submit) },
-			onValueChange = { exec(SetPassword(it)) },
+			onImeAction = { onAction(Submit) },
+			onValueChange = { onAction(SetPassword(it)) },
 			value = model.password
 		)
 		Opacity(if (isEnabled) 1f else 0.4f) {
 			Button(
 				text = "LOGIN",
 				modifier = modifier,
-				onClick = { if (isEnabled) exec(Submit) }
+				onClick = { if (isEnabled) onAction(Submit) }
 			)
 		}
 	}

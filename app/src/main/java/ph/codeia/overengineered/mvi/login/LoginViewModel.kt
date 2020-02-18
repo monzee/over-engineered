@@ -17,7 +17,7 @@ class LoginViewModel(private val savedState: SavedStateHandle) : ViewModel() {
 	@Module
 	interface Bindings {
 		@Binds
-		fun loginAdapter(adapter: DefaultAdapter): LoginAdapter
+		fun loginAdapter(adapter: ValidateOnFieldChange): LoginAdapter
 	}
 
 	private val state = mutableStateOf(from(savedState))
@@ -29,9 +29,7 @@ class LoginViewModel(private val savedState: SavedStateHandle) : ViewModel() {
 	val service: LoginService = FakeLoginService
 
 	@Provides
-	fun controller(
-		adapter: LoginAdapter
-	): CallWith<@JvmSuppressWildcards LoginAction> = { action ->
+	fun controller(adapter: LoginAdapter): CallWith<LoginAction> = { action ->
 		val (current, next) = state
 		with(adapter) {
 			when (action) {

@@ -25,10 +25,12 @@ class MviLoginFragment @Inject constructor(
 	private val loginModel: LoginViewModel by viewModels { vmFactory }
 
 	override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
-		val loginForm = loginViewBinder.bind(loginModel).form
+		val loginView = loginViewBinder.bind(loginModel)
+		val update = loginView.input
+		val form = loginView.output
 		// seems like it's unsafe to pass a lambda doing something context-related
 		// inside a composition, so i'm using LiveData for fragment communication.
-		loginForm.result.consume(viewLifecycleOwner) {
+		form.result.consume(viewLifecycleOwner) {
 			when (it) {
 				is Done -> toast(it.token())
 				is Failed -> it.cause().let { cause ->
@@ -43,7 +45,10 @@ class MviLoginFragment @Inject constructor(
 					arrangement = Arrangement.Center,
 					modifier = LayoutPadding(12.dp)
 				) {
-					loginForm.render(modifier = LayoutGravity.Center)
+					form.render(
+						modifier = LayoutGravity.Center,
+						onAction = update
+					)
 				}
 			}
 		}
