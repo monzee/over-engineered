@@ -1,16 +1,28 @@
-package ph.codeia.overengineered.login.mvi
+package ph.codeia.overengineered.mvi.login
 
-import androidx.core.util.PatternsCompat
 import kotlinx.coroutines.CompletableDeferred
-import kotlinx.coroutines.delay
 import ph.codeia.overengineered.controls.Value
 import ph.codeia.overengineered.emit
 import ph.codeia.overengineered.many
-import kotlin.random.Random
+import javax.inject.Inject
 
-object FakeLoginService : LoginAdapter {
-	private const val Required = "required"
-	private val EmailRegex = PatternsCompat.EMAIL_ADDRESS.toRegex()
+class DefaultAdapter @Inject constructor(
+	private val service: LoginService
+) : LoginAdapter {
+
+	override fun LoginModel.setUsername(value: String): LoginModel = run {
+		copy(username = value).let {
+			if (it.tag is Validated) it.validate()
+			else it
+		}
+	}
+
+	override fun LoginModel.setPassword(value: String): LoginModel = run {
+		copy(password = value).let {
+			if (it.tag is Validated) it.validate()
+			else it
+		}
+	}
 
 	override fun LoginModel.submit(sync: Value<LoginModel>) = many<LoginModel> {
 		val model = this@submit
@@ -22,15 +34,10 @@ object FakeLoginService : LoginAdapter {
 		if (!tag.isValid) emit(model.copy(tag = tag))
 		else {
 			emit(model.copy(tag = Busy))
-			delay(2000)
 			val promise = CompletableDeferred<LoginModel>()
 			try {
-				when (Random.nextInt(4)) {
-					0 -> throw LoginError("wrong username or password")
-					1 -> throw LoginError("service unavailable")
-					2 -> if (Random.nextInt(25) == 0) error("unlucky")
-				}
-				emit(sync().finish(promise, "congrats!"))
+				val token = service.login(model.username, model.password)
+				emit(sync().finish(promise, token))
 			}
 			catch (ex: Throwable) {
 				emit(sync().finish(promise, ex))
@@ -47,16 +54,8 @@ object FakeLoginService : LoginAdapter {
 
 	private fun validate(username: String, password: String) = run {
 		Validated(
-			when {
-				username.isEmpty() -> Required
-				!EmailRegex.matches(username) -> "bad email address format"
-				else -> null
-			},
-			when {
-				password.isEmpty() -> Required
-				password.length < 5 -> "too simple"
-				else -> null
-			}
+			service.validateUsername(username),
+			service.validatePassword(password)
 		)
 	}
 

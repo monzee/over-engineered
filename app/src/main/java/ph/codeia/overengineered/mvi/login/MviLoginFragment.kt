@@ -1,4 +1,4 @@
-package ph.codeia.overengineered.login.mvi
+package ph.codeia.overengineered.mvi.login
 
 import android.os.Bundle
 import android.view.View
@@ -8,7 +8,12 @@ import androidx.fragment.app.Fragment
 import androidx.fragment.app.viewModels
 import androidx.lifecycle.SavedStateViewModelFactory
 import androidx.ui.core.setContent
+import androidx.ui.layout.Arrangement
+import androidx.ui.layout.Column
+import androidx.ui.layout.LayoutGravity
+import androidx.ui.layout.LayoutPadding
 import androidx.ui.material.MaterialTheme
+import androidx.ui.unit.dp
 import ph.codeia.overengineered.R
 import ph.codeia.overengineered.consume
 import javax.inject.Inject
@@ -20,7 +25,7 @@ class MviLoginFragment @Inject constructor(
 	private val loginModel: LoginViewModel by viewModels { vmFactory }
 
 	override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
-		val loginForm = loginViewBinder.bind(loginModel).output
+		val loginForm = loginViewBinder.bind(loginModel).form
 		// seems like it's unsafe to pass a lambda doing something context-related
 		// inside a composition, so i'm using LiveData for fragment communication.
 		loginForm.result.consume(viewLifecycleOwner) {
@@ -34,7 +39,12 @@ class MviLoginFragment @Inject constructor(
 		}
 		(view as ViewGroup).setContent {
 			MaterialTheme {
-				loginForm.render()
+				Column(
+					arrangement = Arrangement.Center,
+					modifier = LayoutPadding(12.dp)
+				) {
+					loginForm.render(modifier = LayoutGravity.Center)
+				}
 			}
 		}
 	}

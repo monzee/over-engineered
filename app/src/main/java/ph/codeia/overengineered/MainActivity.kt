@@ -7,7 +7,7 @@ import androidx.fragment.app.FragmentFactory
 import androidx.lifecycle.SavedStateViewModelFactory
 import androidx.savedstate.SavedStateRegistryOwner
 import dagger.*
-import ph.codeia.overengineered.login.mvi.LoginView as MviLoginView
+import ph.codeia.overengineered.mvi.login.LoginView as MviLoginView
 import ph.codeia.shiv.Shiv
 import shiv.FragmentBindings
 

@@ -4,7 +4,7 @@ import androidx.compose.Composable
 import androidx.compose.ambient
 import androidx.compose.remember
 import androidx.ui.core.*
-import androidx.ui.foundation.Clickable
+import androidx.ui.foundation.shape.corner.CircleShape
 import androidx.ui.foundation.shape.corner.RoundedCornerShape
 import androidx.ui.graphics.Color
 import androidx.ui.graphics.SolidColor
@@ -13,8 +13,9 @@ import androidx.ui.graphics.vector.VectorAsset
 import androidx.ui.input.ImeAction
 import androidx.ui.input.KeyboardType
 import androidx.ui.layout.*
+import androidx.ui.material.Button
 import androidx.ui.material.MaterialTheme
-import androidx.ui.material.ripple.Ripple
+import androidx.ui.material.TextButtonStyle
 import androidx.ui.material.surface.Surface
 import androidx.ui.res.DeferredResource
 import androidx.ui.res.loadVectorResource
@@ -175,7 +176,7 @@ object EditText {
 					bottom = absolute.half,
 					left = absolute.half,
 					right = absolute.half +
-						if (state.isSecret) 24.dp
+						if (fieldType is Type.Password) absolute.large
 						else 0.dp,
 					top = absolute.half
 				) {
@@ -265,16 +266,12 @@ object EditText {
 		tint: Color
 	) {
 		icon.resource.resource?.let { res ->
-			Ripple(bounded = false) {
-				Clickable(consumeDownOnStart = false, onClick = action) {
-					Container(
-						height = absolute.double,
-						modifier = modifier + LayoutPadding(right = absolute.half),
-						width = absolute.double
-					) {
-						DrawVector(tintColor = tint, vectorImage = res)
-					}
-				}
+			Button(
+				modifier = modifier + LayoutSize(absolute.large),
+				onClick = action,
+				style = TextButtonStyle(shape = CircleShape)
+			) {
+				DrawVector(tintColor = tint, vectorImage = res)
 			}
 		}
 	}

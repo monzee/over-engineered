@@ -1,10 +1,10 @@
-package ph.codeia.overengineered.login.mvi
+package ph.codeia.overengineered.mvi.login
 
 import dagger.Subcomponent
 
 @Subcomponent(modules = [LoginViewModel::class])
 interface LoginView {
-	val output: LoginForm
+	val form: LoginForm
 
 	@Subcomponent.Factory
 	interface Binder {

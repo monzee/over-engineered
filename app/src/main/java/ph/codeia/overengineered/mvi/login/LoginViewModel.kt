@@ -1,24 +1,32 @@
-package ph.codeia.overengineered.login.mvi
+package ph.codeia.overengineered.mvi.login
 
 import androidx.compose.State
 import androidx.compose.mutableStateOf
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import dagger.Binds
 import dagger.Module
 import dagger.Provides
 import ph.codeia.overengineered.collect
 import ph.codeia.overengineered.controls.CallWith
 
-@Module
+@Module(includes = [LoginViewModel.Bindings::class])
 class LoginViewModel(private val savedState: SavedStateHandle) : ViewModel() {
+
+	@Module
+	interface Bindings {
+		@Binds
+		fun loginAdapter(adapter: DefaultAdapter): LoginAdapter
+	}
+
 	private val state = mutableStateOf(from(savedState))
 
 	@get:Provides
 	val readOnlyState: State<LoginModel> = state
 
 	@get:Provides
-	val adapter: LoginAdapter = FakeLoginService
+	val service: LoginService = FakeLoginService
 
 	@Provides
 	fun controller(

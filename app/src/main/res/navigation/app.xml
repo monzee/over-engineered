@@ -9,7 +9,7 @@
 
     <fragment
         android:id="@+id/login"
-        android:name="ph.codeia.overengineered.login.mvi.MviLoginFragment"
+        android:name="ph.codeia.overengineered.mvi.login.MviLoginFragment"
         android:label="Login"/>
 
 </navigation>
