@@ -4,7 +4,9 @@ import android.os.Bundle
 import android.widget.Toast
 import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
-import androidx.compose.*
+import androidx.compose.Composable
+import androidx.compose.mutableStateOf
+import androidx.compose.onActive
 import androidx.core.util.PatternsCompat
 import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.ViewModel
@@ -49,7 +51,7 @@ class DirectControlStateAccess : ViewModel() {
 	private val toast = mutableStateOf<String?>("hello!")
 	private var isActive by mutableStateOf(false)
 	private var isBusy by mutableStateOf(false)
-	private var validationResult by mutableStateOf(Valid, StructurallyEqual)
+	private var validationResult by mutableStateOf(Valid)
 
 	private companion object {
 		val EmailPattern = PatternsCompat.EMAIL_ADDRESS.toRegex()
@@ -68,8 +70,8 @@ class DirectControlStateAccess : ViewModel() {
 
 	@Composable
 	fun render(lifetime: LifecycleOwner) {
-		val absolute = ambient(Metrics.Handle)
-		val focus = ambient(FocusManagerAmbient)
+		val absolute = Metrics.Handle.current
+		val focus = FocusManagerAmbient.current
 
 		onActive {
 			username.events.consume(lifetime) {

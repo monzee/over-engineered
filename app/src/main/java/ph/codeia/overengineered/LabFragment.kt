@@ -8,20 +8,19 @@ import android.view.ViewGroup
 import android.widget.Toast
 import androidx.compose.Composable
 import androidx.compose.Model
-import androidx.compose.ambient
 import androidx.compose.stateFor
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.viewModels
 import androidx.lifecycle.*
 import androidx.ui.core.*
+import androidx.ui.foundation.Border
 import androidx.ui.foundation.shape.corner.RoundedCornerShape
 import androidx.ui.graphics.Color
-import androidx.ui.graphics.SolidColor
 import androidx.ui.input.ImeAction
 import androidx.ui.layout.*
 import androidx.ui.material.Button
 import androidx.ui.material.MaterialTheme
-import androidx.ui.material.OutlinedButtonStyle
+import androidx.ui.material.OutlinedButton
 import androidx.ui.material.surface.Surface
 import androidx.ui.tooling.preview.Preview
 import androidx.ui.unit.dp
@@ -114,7 +113,7 @@ class FormControl @Inject constructor(private val model: Model) {
 
 	@Composable
 	operator fun invoke(): LiveData<Action> = liveComposable {
-		val lens = ambient(FocusManagerAmbient)
+		val lens = FocusManagerAmbient.current
 		CurrentTextStyleProvider(MaterialTheme.typography().h6) {
 			Column {
 				FieldDecoration {
@@ -136,7 +135,9 @@ class FormControl @Inject constructor(private val model: Model) {
 					)
 				}
 				Spacer(LayoutHeight(base))
-				Button(text = "LOGIN", onClick = { +Action.Submit })
+				Button(onClick = { +Action.Submit }) {
+					Text("LOGIN")
+				}
 			}
 		}
 	}
@@ -151,8 +152,7 @@ class FormControl @Inject constructor(private val model: Model) {
 			else Color.Red
 		}
 		Surface(
-			borderBrush = SolidColor(borderColor),
-			borderWidth = 1.dp,
+			border = Border(1.dp, borderColor),
 			shape = RoundedCornerShape(3.dp)
 		) {
 			Container(modifier = LayoutPadding(half)) {
@@ -184,10 +184,13 @@ class CounterControl @Inject constructor(private val model: Model) {
 			)
 			Spacer(LayoutHeight(base))
 			Row {
-				val outlinedButton = OutlinedButtonStyle()
-				Button(text = "-", style = outlinedButton, onClick = { +false })
+				OutlinedButton(onClick = { +false }) {
+					Text("-")
+				}
 				Spacer(LayoutWidth(base))
-				Button(text = "+", style = outlinedButton, onClick = { +true })
+				OutlinedButton(onClick = { +true }) {
+					Text("+")
+				}
 			}
 		}
 	}
@@ -213,9 +216,13 @@ fun AnotherCounter() {
 		)
 		Spacer(LayoutHeight(base))
 		Row {
-			Button(onClick = { next(Event.Dec) }, text = "-")
+			Button(onClick = { next(Event.Dec) }) {
+				Text("-")
+			}
 			Spacer(LayoutWidth(base))
-			Button(onClick = { next(Event.Inc) }, text = "+")
+			Button(onClick = { next(Event.Inc) }) {
+				Text("+")
+			}
 		}
 	}
 }

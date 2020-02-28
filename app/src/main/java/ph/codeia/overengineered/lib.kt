@@ -5,6 +5,7 @@ import androidx.compose.Model
 import androidx.compose.remember
 import androidx.lifecycle.*
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.launch
 
 /*
@@ -19,6 +20,7 @@ interface LiveComposableScope<T> {
 }
 
 
+@Deprecated("this might not be a good idea.")
 @Composable
 inline fun <T> liveComposable(
 	block: @Composable LiveComposableScope<T>.() -> Unit
@@ -120,10 +122,10 @@ inline fun <S: Any, E> scan(
 
 
 /**
- * LiveData with completion semantics.
+ * Builds cold [LiveData] with completion semantics.
  *
- * Makeshift Flow<T> because collecting a flow would cause a compile
- * error at the moment.
+ * Makeshift [kotlinx.coroutines.flow.Flow] because collecting a flow would cause
+ * a compile error at the moment.
  */
 typealias Many<T> = CoroutineScope.() -> Collectible<T>
 typealias Collectible<T> = MutableLiveData<Finite<T>>
@@ -137,7 +139,21 @@ fun <T> Collectible<T>.emit(value: T) {
 	setValue(Finite.Next(value))
 }
 
-fun <T> CoroutineScope.collect(produce: Many<T>, block: (T) -> Unit) {
+suspend fun <T> Collectible<T>.emitAll(many: Many<T>) {
+	many.collect(::emit)
+}
+
+suspend fun <T> Many<T>.collect(block: (T) -> Unit) {
+	val src = this
+	coroutineScope {
+		collect(src, block)
+	}
+}
+
+fun <T> CoroutineScope.collect(
+	produce: Many<T>,
+	block: (T) -> Unit
+) {
 	val data = produce()
 	data.observeForever(object : Observer<Finite<T>> {
 		override fun onChanged(next: Finite<T>?) {

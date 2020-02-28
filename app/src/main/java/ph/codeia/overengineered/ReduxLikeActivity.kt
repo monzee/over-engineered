@@ -3,9 +3,7 @@ package ph.codeia.overengineered
 import android.os.Bundle
 import androidx.activity.viewModels
 import androidx.appcompat.app.AppCompatActivity
-import androidx.compose.Ambient
-import androidx.compose.Composable
-import androidx.compose.ambient
+import androidx.compose.*
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.ui.core.Text
@@ -28,7 +26,7 @@ class ReduxLikeActivity : AppCompatActivity() {
 		super.onCreate(savedInstanceState)
 		val model: LabViewModel by viewModels()
 		setContent {
-			LabViewModel.Store.Provider(model.store) {
+			Providers(LabViewModel.Store.provides(model.store)) {
 				MaterialTheme {
 					Chrome {
 						Body()
@@ -43,7 +41,7 @@ class ReduxLikeActivity : AppCompatActivity() {
 fun preview() {
 	val store = LabViewModel().store
 	store.dispatch(Load.Finish("lorem ipsum dolor sit amet"))
-	LabViewModel.Store.Provider(store) {
+	Providers(LabViewModel.Store.provides(store)) {
 		MaterialTheme {
 			Chrome {
 				Body()
@@ -68,12 +66,13 @@ inline fun Chrome(
 
 @Composable
 fun ColumnScope.Body() {
-	val (state, next) = ambient(LabViewModel.Store)
+	val (state, next) = LabViewModel.Store.current
 	Button(
-		text = "Load data",
 		modifier = LayoutGravity.Center,
 		onClick = { next(Load.Start(next)) }
-	)
+	) {
+		Text("Load data")
+	}
 	if (state !is Loadable.Idle) {
 		Spacer(LayoutHeight(12.dp))
 		when (state) {
@@ -81,7 +80,7 @@ fun ColumnScope.Body() {
 				modifier = LayoutGravity.Center,
 				text = "please wait..."
 			)
-			is Loadable.Done -> Text(
+			is Loadable.Done<String> -> Text(
 				modifier = LayoutGravity.Center,
 				text = state.data
 			)
@@ -114,7 +113,7 @@ class LabViewModel : ViewModel() {
 	}
 
 	companion object {
-		val Store = Ambient.of<Store<String>>()
+		val Store = ambientOf<Store<String>>()
 	}
 }
 

@@ -5,6 +5,7 @@ import androidx.lifecycle.MutableLiveData
 import androidx.ui.core.FocusManagerAmbient
 import androidx.ui.core.Modifier
 import androidx.ui.core.Opacity
+import androidx.ui.core.Text
 import androidx.ui.input.ImeAction
 import androidx.ui.material.Button
 import ph.codeia.overengineered.Consumable
@@ -37,7 +38,7 @@ class LoginForm @Inject constructor(
 			}
 		}
 		val errors = model.tag as? Validated
-		val focus = ambient(FocusManagerAmbient)
+		val focus = FocusManagerAmbient.current
 		val isEnabled = when (val tag = model.tag) {
 			Busy -> false
 			is Validated -> tag.isValid
@@ -66,10 +67,11 @@ class LoginForm @Inject constructor(
 		)
 		Opacity(if (isEnabled) 1f else 0.4f) {
 			Button(
-				text = "LOGIN",
 				modifier = modifier,
 				onClick = { if (isEnabled) onAction(Submit) }
-			)
+			) {
+				Text("LOGIN")
+			}
 		}
 	}
 

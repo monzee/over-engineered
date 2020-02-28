@@ -9,7 +9,6 @@ import androidx.ui.graphics.Color
 import androidx.ui.graphics.Paint
 import androidx.ui.graphics.PaintingStyle
 import androidx.ui.unit.*
-import kotlin.reflect.KProperty
 
 /*
  * This file is a part of the Over Engineered project.
@@ -46,7 +45,7 @@ data class Metrics(
 	val huge = unit * 8
 
 	companion object {
-		val Handle = Ambient.of { Metrics(12) }
+		val Handle = ambientOf { Metrics(12) }
 	}
 }
 

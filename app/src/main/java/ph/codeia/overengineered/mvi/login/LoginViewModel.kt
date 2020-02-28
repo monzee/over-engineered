@@ -41,7 +41,6 @@ class LoginViewModel(private val savedState: SavedStateHandle) : ViewModel() {
 	}
 
 	override fun onCleared() {
-		super.onCleared()
 		val model = state.value
 		val errors = model.tag as? Validated
 		savedState[IsIdle] = model.tag == Idle

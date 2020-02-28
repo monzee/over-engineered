@@ -5,9 +5,8 @@ import androidx.compose.Model
 import androidx.lifecycle.MutableLiveData
 import androidx.ui.core.Modifier
 import androidx.ui.core.Opacity
-import androidx.ui.material.Button
-import androidx.ui.material.ButtonStyle
-import androidx.ui.material.ContainedButtonStyle
+import androidx.ui.core.Text
+import androidx.ui.material.*
 import ph.codeia.overengineered.Consumable
 import ph.codeia.overengineered.SingleUse
 import ph.codeia.overengineered.plusAssign
@@ -21,6 +20,10 @@ import ph.codeia.overengineered.plusAssign
 class ButtonControl(var isEnabled: Boolean = true) {
 	object Event
 
+	enum class Style {
+		Contained, Outlined, Text
+	}
+
 	private val _events = MutableLiveData<SingleUse<Event>>()
 	val events: Consumable<Event> = _events
 
@@ -32,31 +35,38 @@ class ButtonControl(var isEnabled: Boolean = true) {
 	fun render(
 		text: String,
 		modifier: Modifier = Modifier.None,
-		style: ButtonStyle = ContainedButtonStyle()
+		style: Style = Style.Contained
 	) {
-		Opacity(if (isEnabled) 1f else 0.5f) {
-			Button(
-				modifier = modifier,
-				onClick = if (isEnabled) onClick else null,
-				style = style,
-				text = text
-			)
+		render(modifier = modifier, style = style) {
+			Text(text = text)
 		}
 	}
 
 	@Composable
 	fun render(
 		modifier: Modifier = Modifier.None,
-		style: ButtonStyle = ContainedButtonStyle(),
+		style: Style = Style.Contained,
 		children: Children
 	) {
 		Opacity(if (isEnabled) 1f else 0.5f) {
-			Button(
-				children = children,
-				modifier = modifier,
-				onClick = if (isEnabled) onClick else null,
-				style = style
-			)
+			when (style) {
+				Style.Contained -> Button(
+					children = children,
+					modifier = modifier,
+					onClick = if (isEnabled) onClick else null
+				)
+				Style.Outlined -> OutlinedButton(
+					children = children,
+					modifier = modifier,
+					onClick = if (isEnabled) onClick else null
+				)
+				Style.Text -> TextButton(
+					children = children,
+					modifier = modifier,
+					onClick = if (isEnabled) onClick else null
+				)
+			}
+
 		}
 	}
 }

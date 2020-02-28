@@ -1,9 +1,9 @@
 package ph.codeia.overengineered.controls
 
 import androidx.compose.Composable
-import androidx.compose.ambient
 import androidx.compose.remember
 import androidx.ui.core.*
+import androidx.ui.foundation.Border
 import androidx.ui.foundation.shape.corner.CircleShape
 import androidx.ui.foundation.shape.corner.RoundedCornerShape
 import androidx.ui.graphics.Color
@@ -13,14 +13,12 @@ import androidx.ui.graphics.vector.VectorAsset
 import androidx.ui.input.ImeAction
 import androidx.ui.input.KeyboardType
 import androidx.ui.layout.*
-import androidx.ui.material.Button
 import androidx.ui.material.MaterialTheme
-import androidx.ui.material.TextButtonStyle
+import androidx.ui.material.TextButton
 import androidx.ui.material.surface.Surface
 import androidx.ui.res.DeferredResource
 import androidx.ui.res.loadVectorResource
 import androidx.ui.unit.dp
-import androidx.ui.unit.withDensity
 import ph.codeia.overengineered.R
 import ph.codeia.overengineered.scan
 
@@ -125,8 +123,8 @@ object EditText {
 			error.isNullOrEmpty()
 		)
 		val activity = state.activity
-		val absolute = ambient(Metrics.Handle)
-		val density = ambientDensity()
+		val absolute = Metrics.Handle.current
+		val density = DensityAmbient.current
 		val textStyle = currentTextStyle()
 		val colors = MaterialTheme.colors()
 		val textColor = textStyle.color ?: colors.onSurface
@@ -135,7 +133,7 @@ object EditText {
 		val reveal = loadVectorResource(R.drawable.reveal)
 		val conceal = loadVectorResource(R.drawable.conceal)
 		val reservedVerticalSpace = remember(density, smallFontSize, absolute) {
-			withDensity(density) {
+			with(density) {
 				val height = smallFontSize.toDp() + absolute.half
 				LayoutPadding(top = height, bottom = height)
 			}
@@ -165,20 +163,21 @@ object EditText {
 
 		Stack(modifier = modifier) {
 			Surface(
-				borderWidth = 1.dp,
-				borderBrush = SolidColor(borderColor),
+				border = Border(size = 1.dp, color = borderColor),
 				color = surfaceColor,
 				contentColor = contentColor,
 				modifier = LayoutGravity.Center + reservedVerticalSpace,
 				shape = RoundedCornerShape(absolute.tiny)
 			) {
-				Padding(
-					bottom = absolute.half,
-					left = absolute.half,
-					right = absolute.half +
-						if (fieldType is Type.Password) absolute.large
-						else 0.dp,
-					top = absolute.half
+				Container(
+					padding = EdgeInsets(
+						bottom = absolute.half,
+						left = absolute.half,
+						right = absolute.half +
+							if (fieldType is Type.Password) absolute.large
+							else 0.dp,
+						top = absolute.half
+					)
 				) {
 					if (state.isSecret) PasswordTextField(
 						// missing `keyboard` and `modifier` params!
@@ -266,10 +265,10 @@ object EditText {
 		tint: Color
 	) {
 		icon.resource.resource?.let { res ->
-			Button(
+			TextButton(
 				modifier = modifier + LayoutSize(absolute.large),
 				onClick = action,
-				style = TextButtonStyle(shape = CircleShape)
+				shape = CircleShape
 			) {
 				DrawVector(tintColor = tint, vectorImage = res)
 			}

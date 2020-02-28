@@ -46,8 +46,8 @@ class LoginSegment @Inject constructor(private val model: LoginModel) {
 		}
 
 		val typography = MaterialTheme.typography()
-		val size = ambient(Metrics.Handle)
-		val focus = ambient(FocusManagerAmbient)
+		val size = Metrics.Handle.current
+		val focus = FocusManagerAmbient.current
 		CurrentTextStyleProvider(typography.h6) {
 			Column {
 				EditText(

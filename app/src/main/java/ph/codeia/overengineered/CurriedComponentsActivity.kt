@@ -63,11 +63,9 @@ fun Input(count: Int, doIt: Procedure): @Composable CallWith<Modifier> = { modif
 		hint = "Something goes here.",
 		modifier = modifier
 	)
-	Button(
-		text = "do modifier.",
-		modifier = modifier,
-		onClick = doIt
-	)
+	Button(modifier = modifier, onClick = doIt) {
+		Text(text = "do it.")
+	}
 }
 
 class TheViewModel : ViewModel() {
